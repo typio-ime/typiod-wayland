@@ -12,6 +12,7 @@ The Linux/Wayland host for the [Typio](../typio) input method framework. This re
   - [Configuration Reference](reference/configuration.md)
 - **[Explanation](explanation/)** — Understanding-oriented design documents.
   - [Wayland Input Method Protocol](explanation/wayland-input-method.md)
+  - [Frontend Graphics](explanation/frontend-graphics.md)
   - [Timing Model](explanation/timing-model.md)
   - [Lifecycle Resilience and Recovery](explanation/lifecycle-resilience.md)
   - [Control Surfaces](explanation/control-surfaces.md)
