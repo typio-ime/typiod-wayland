@@ -80,6 +80,7 @@ if enable_wayland
     if flux_dep.found()
         daemon_sources += files(
             'ui/panel/panel.c',
+            'ui/panel/surface.c',
             'ui/panel/layout.c',
             'ui/panel/paint.c',
             'ui/panel/text_shaper.c',

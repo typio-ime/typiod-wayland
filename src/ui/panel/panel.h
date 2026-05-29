@@ -43,6 +43,10 @@ bool typio_panel_update_content(TypioPanel *panel,
 /* Convenience wrapper for the InputContext-only case (candidates + preedit). */
 bool typio_panel_update(TypioPanel *panel, TypioInputContext *ctx);
 
+/* Re-render the current content (called by the surface on a scale/output
+ * change). No-op unless the panel is visible. */
+void typio_panel_refresh(TypioPanel *panel);
+
 void typio_panel_hide(TypioPanel *panel);
 void typio_panel_invalidate_config(TypioPanel *panel);
 void typio_panel_handle_output_change(TypioPanel *panel, struct wl_output *output);
