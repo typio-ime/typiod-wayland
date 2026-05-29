@@ -1,5 +1,5 @@
 /**
- * @file candidate_panel.c
+ * @file panel.c
  * @brief Wayland input-panel coordinator.
  *
  * The panel presents a flux (Vulkan) swapchain directly onto its
@@ -17,7 +17,8 @@
 #include "layout.h"
 #include "paint.h"
 #include "theme.h"
-#include "renderer.h"
+#include "text_shaper.h"
+#include "device.h"
 #include "monotonic.h"
 #include "preedit.h"
 #include "typio/runtime/instance.h"

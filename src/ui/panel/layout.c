@@ -1,10 +1,10 @@
 /**
- * @file candidate_panel_layout.c
+ * @file layout.c
  * @brief Candidate panel geometry: Flux-based LRU cache and geometry computation.
  */
 
 #include "layout.h"
-#include "renderer.h"
+#include "text_shaper.h"
 #include "typio/abi/config.h"
 #include "typio/abi/string.h"
 #include "typio/runtime/instance.h"

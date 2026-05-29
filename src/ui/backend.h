@@ -1,7 +1,7 @@
 #ifndef TYPIO_WL_TEXT_UI_BACKEND_H
 #define TYPIO_WL_TEXT_UI_BACKEND_H
 
-#include "panel.h"
+#include "content.h"
 
 #include <stdbool.h>
 

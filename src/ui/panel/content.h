@@ -1,5 +1,5 @@
 /**
- * @file panel_content.h
+ * @file content.h
  * @brief Content model for the unified panel backend (Typio Panel System).
  *
  * This header defines the data-only description of what the panel should

@@ -13,7 +13,7 @@ wayland_test_inc = [
     include_directories('../src/frontend'),
     include_directories('../src/input'),
     include_directories('../src/ui'),
-    include_directories('../src/ui/popup'),
+    include_directories('../src/ui/panel'),
     include_directories('../src/engine'),
     include_directories('../src/bridge'),
     include_directories('../src/platform'),

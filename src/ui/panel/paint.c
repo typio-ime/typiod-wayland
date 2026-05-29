@@ -1,5 +1,5 @@
 /**
- * @file candidate_panel_paint.c
+ * @file paint.c
  * @brief Record the candidate panel into a flux canvas (GPU).
  *
  * Rectangles are solid premultiplied fills; glyphs are filled outlines via
@@ -8,7 +8,7 @@
  */
 
 #include "paint.h"
-#include "renderer.h"
+#include "text_shaper.h"
 
 #include <stdint.h>
 

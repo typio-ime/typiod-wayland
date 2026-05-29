@@ -1,10 +1,10 @@
 /**
- * @file candidate_panel_theme.h
+ * @file theme.h
  * @brief Theme detection and color palettes for panel UI
  */
 
-#ifndef TYPIO_WL_CANDIDATE_POPUP_THEME_H
-#define TYPIO_WL_CANDIDATE_POPUP_THEME_H
+#ifndef TYPIO_WL_PANEL_THEME_H
+#define TYPIO_WL_PANEL_THEME_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -69,4 +69,4 @@ uint64_t typio_panel_palette_hash(const TypioPanelPalette *p);
 }
 #endif
 
-#endif /* TYPIO_WL_CANDIDATE_POPUP_THEME_H */
+#endif /* TYPIO_WL_PANEL_THEME_H */

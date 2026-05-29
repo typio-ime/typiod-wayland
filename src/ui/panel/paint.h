@@ -1,5 +1,5 @@
 /**
- * @file candidate_panel_paint.h
+ * @file paint.h
  * @brief Record the candidate panel into a flux canvas.
  *
  * The panel is drawn entirely on the GPU via flux: the background is the
@@ -9,8 +9,8 @@
  * this module only records draw commands between flux_canvas_begin/end.
  */
 
-#ifndef TYPIO_WL_CANDIDATE_POPUP_PAINT_H
-#define TYPIO_WL_CANDIDATE_POPUP_PAINT_H
+#ifndef TYPIO_WL_PANEL_PAINT_H
+#define TYPIO_WL_PANEL_PAINT_H
 
 #include "layout.h"
 
@@ -30,4 +30,4 @@ void panel_record(const PanelPaintTarget *target,
                   const PanelGeometry *geom,
                   int selected);
 
-#endif /* TYPIO_WL_CANDIDATE_POPUP_PAINT_H */
+#endif /* TYPIO_WL_PANEL_PAINT_H */

@@ -80,17 +80,18 @@ if enable_wayland
 
     if flux_dep.found()
         daemon_sources += files(
-            'ui/popup/panel.c',
-            'ui/popup/layout.c',
-            'ui/popup/paint.c',
-            'ui/renderer.c',
+            'ui/panel/panel.c',
+            'ui/panel/layout.c',
+            'ui/panel/paint.c',
+            'ui/panel/text_shaper.c',
+            'ui/panel/device.c',
             'ui/fallback_cache.c',
             'ui/glyph_pack.c',
-            'ui/popup/theme.c',
+            'ui/panel/theme.c',
         )
     else
         daemon_sources += files(
-            'ui/popup/stub.c',
+            'ui/panel/stub.c',
         )
     endif
 endif
@@ -145,7 +146,7 @@ if enable_wayland
         include_directories('frontend'),
         include_directories('input'),
         include_directories('ui'),
-        include_directories('ui/popup'),
+        include_directories('ui/panel'),
         include_directories('engine'),
         include_directories('bridge'),
         include_directories('platform'),

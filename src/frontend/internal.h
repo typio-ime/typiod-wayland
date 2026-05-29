@@ -14,7 +14,7 @@
 #include "lifecycle.h"
 #include "repeat.h"
 #include "identity.h"
-#include "panel.h"
+#include "content.h"
 #include "resume.h"
 #include "startup.h"
 #include "backend.h"

@@ -1,6 +1,6 @@
 #include "internal.h"
 #ifdef HAVE_FLUX
-#include "renderer.h"
+#include "text_shaper.h"
 #endif
 
 #ifdef HAVE_VOICE

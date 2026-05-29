@@ -1,14 +1,14 @@
 /**
- * @file candidate_panel_layout.h
+ * @file layout.h
  * @brief Candidate panel geometry: LRU layout cache and immutable geometry snapshots.
  */
 
-#ifndef TYPIO_WL_CANDIDATE_POPUP_LAYOUT_H
-#define TYPIO_WL_CANDIDATE_POPUP_LAYOUT_H
+#ifndef TYPIO_WL_PANEL_LAYOUT_H
+#define TYPIO_WL_PANEL_LAYOUT_H
 
 #include "theme.h"
-#include "panel.h"
-#include "text.h"
+#include "content.h"
+#include "text_shaper.h"
 #include "typio/abi/input_context.h"
 #include "typio/runtime/instance.h"
 
@@ -186,4 +186,4 @@ void panel_config_build_palette(const PanelConfig *cfg,
                                  TypioPanelThemeCache *cache,
                                  TypioPanelPalette *out_palette);
 
-#endif /* TYPIO_WL_CANDIDATE_POPUP_LAYOUT_H */
+#endif /* TYPIO_WL_PANEL_LAYOUT_H */

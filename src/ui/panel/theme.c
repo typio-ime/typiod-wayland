@@ -1,5 +1,5 @@
 /**
- * @file candidate_panel_theme.c
+ * @file theme.c
  * @brief Theme detection and color palettes for panel UI
  *
  * Detects the desktop dark/light preference by checking (in order):

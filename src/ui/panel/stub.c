@@ -1,5 +1,5 @@
 /**
- * @file candidate_panel_stub.c
+ * @file stub.c
  * @brief No-op stub for candidate panel when flux is unavailable.
  */
 
