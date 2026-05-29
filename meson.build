@@ -89,7 +89,7 @@ flux_proj = subproject('flux',
 if flux_proj.found()
     flux_dep = flux_proj.get_variable('flux_dep')
 else
-    flux_dep = dependency('flux', required: false)
+    flux_dep = dependency('flux', required: enable_wayland)
 endif
 
 # ── Version & source label ────────────────────────────────────────────────
