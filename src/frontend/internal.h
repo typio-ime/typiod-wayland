@@ -91,7 +91,6 @@ typedef enum TypioWlLoopStage {
  *   IDLE ──press──▶ TRACK_FORWARDED          (forwarded to app)
  *   IDLE ──press──▶ TRACK_BASIC_PASSTHROUGH  (basic printable text bypasses engine)
  *   IDLE ──press──▶ TRACK_APP_SHORTCUT       (application shortcut bypasses engine)
- *   IDLE ──press──▶ TRACK_SUPPRESSED_STARTUP (held key from previous grab)
  *   TRACK_APP_SHORTCUT ─physical release──▶ IDLE
  *   TRACK_FORWARDED ─force release──▶ TRACK_RELEASED_PENDING
  *   TRACK_FORWARDED ─physical release──▶ IDLE

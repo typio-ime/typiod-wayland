@@ -57,7 +57,7 @@ States:
 - `TYPIO_KEY_TRACK_FORWARDED`: press was forwarded to the application
 - `TYPIO_KEY_TRACK_APP_SHORTCUT`: non-modifier shortcut key bypassed the engine and was forwarded directly to the application
 - `TYPIO_KEY_TRACK_RELEASED_PENDING`: the daemon already sent a synthetic release and must consume the physical one
-- `TYPIO_KEY_TRACK_SUPPRESSED_STARTUP`: stale held key from a previous grab
+- `TYPIO_KEY_TRACK_SUPPRESSED_STARTUP`: dormant — no longer entered by routing (stale presses are dropped by the grab-generation fence, not suppressed at the press path); the state and its release handler are retained only as a defensive cleanup path
 - `TYPIO_KEY_TRACK_VOICE_PTT`: voice push-to-talk is actively held
 - `TYPIO_KEY_TRACK_VOICE_PTT_UNAVAIL`: voice push-to-talk binding was pressed, but voice is unavailable
 
@@ -75,14 +75,9 @@ Do not overload tracking state names with routing semantics. Final routing decis
 
 ## Startup Guard Rules
 
-The startup guard is intentionally split into two time-based policies:
+Stale **presses** are not suppressed by a time/epoch window. A key press is trusted as genuine user input the moment it arrives; a key whose generation does not match the active grab is dropped by the grab-generation fence (see [Timing Model §One epoch fence](../explanation/timing-model.md#one-epoch-fence)). Do not reintroduce a dispatch-window press filter — it cannot distinguish a compositor re-send from a real keystroke and silently eats the first key after every grab rebuild (notably on the reactivation churn that terminals and tmux produce).
 
-- stale-key guard: a very short window that absorbs keys already held when a new grab starts
-- Enter guard: a longer window that blocks accidental immediate submission when no composition is active
-
-Classification is centralized in `typio_wl_startup_guard_classify_press()`.
-
-Rule: if a decision depends on "why" a key is suppressed, add that rule to the classifier instead of duplicating time-window logic in `wl_keyboard.c`.
+The startup guard's only remaining role is to bound **orphan-release cleanup**: `typio_wl_startup_guard_is_in_guard_window()` (using the grab's `created_at_epoch`) marks the brief window in which a release for a key that was held before the grab existed may be forwarded to the virtual keyboard so the focused client is not left with a stuck key.
 
 The startup guard does not own activation-boundary VK handoff decisions. Orphan release cleanup and carried modifier behavior belong to `boundary_bridge.*`.
 
@@ -153,12 +148,11 @@ Before merging runtime-scheduling changes, verify:
 
 At minimum, keyboard-path changes should keep these areas covered:
 
-- startup guard classification
+- startup guard orphan-release window
 - boundary bridge policy
 - repeat cancellation helper logic
 - activation-boundary reset of key tracking state
-- stale key suppression and release cleanup
-- Enter guard symmetry
+- orphan release cleanup
 - deferred reactivation commit rules
 
 If a change touches `wl_keyboard.c` and cannot be covered by an existing helper test, add a new helper or state-policy test rather than relying only on manual testing.
