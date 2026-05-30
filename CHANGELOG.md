@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.6] — 2026-05-30
+
+### Added
+- Support two-axis engine-status ABI (`active` + `enabled`) and expose `delete_surrounding` capability to plugins.
+- Restore per-app profile directory for isolated state when running multiple instances.
+
+### Fixed
+- Fix panel font-cache use-after-free that caused CJK glyphs to blank over time.
+- Fix tray status icon logic to avoid carrying stale dynamic icons across engine switches.
+
+### Changed
+- Rename all internal `typiod` identifiers to `typio` (types, functions, header guards, build variables).
+- Refresh developer documentation for engine discovery, memory budgets, and panel vocabulary.
+
 ## [0.0.5] — 2026-05-30
 
 ### Fixed
