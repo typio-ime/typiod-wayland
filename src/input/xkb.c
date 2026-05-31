@@ -124,3 +124,12 @@ uint32_t typio_wl_keyboard_unicode(TypioWlKeyboard *keyboard, uint32_t key) {
     if (n == 2) return ((uint32_t)(unsigned char)buf[0] << 8) | (uint8_t)buf[1];
     return 0;
 }
+
+uint32_t typio_wl_keyboard_base_keysym(TypioWlKeyboard *keyboard, uint32_t key) {
+    const xkb_keysym_t *syms;
+    if (!keyboard || !keyboard->xkb_keymap) return 0;
+    int n = xkb_keymap_key_get_syms_by_level(keyboard->xkb_keymap,
+                                               key + 8, 0, 0, &syms);
+    if (n <= 0 || !syms) return 0;
+    return (uint32_t)syms[0];
+}

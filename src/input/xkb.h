@@ -22,5 +22,6 @@ void typio_wl_keyboard_handle_modifiers(TypioWlKeyboard *keyboard,
 /* typio_wl_xkb_effective_modifiers is defined inline in xkb_modifiers.h */
 uint32_t typio_wl_keyboard_keysym(TypioWlKeyboard *keyboard, uint32_t key);
 uint32_t typio_wl_keyboard_unicode(TypioWlKeyboard *keyboard, uint32_t key);
+uint32_t typio_wl_keyboard_base_keysym(TypioWlKeyboard *keyboard, uint32_t key);
 
 #endif /* TYPIO_KEYBOARD_XKB_H */

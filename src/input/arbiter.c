@@ -200,8 +200,7 @@ void typio_wl_key_arbiter_press(TypioKeyArbiter *arbiter,
             arbiter->state = TYPIO_ARBITER_BUFFERING;
             arbiter_buffer_push(arbiter, true, key, keysym, modifiers,
                                 unicode, time);
-            typio_wl_trace(keyboard->frontend, "arbiter",
-                           "stage=buffer-start keysym=0x%x phys=0x%x",
+            typio_log_info("arbiter: buffering keysym=0x%x phys=0x%x",
                            keysym, phys);
             return;
         }
@@ -213,12 +212,8 @@ void typio_wl_key_arbiter_press(TypioKeyArbiter *arbiter,
     case TYPIO_ARBITER_BUFFERING:
         if (arbiter_should_cancel(bind, keysym, phys, true) ||
             arbiter->buffer_count >= TYPIO_ARBITER_MAX_BUFFERED - 1) {
-            /* Replay buffered events, then process this one normally */
-            typio_wl_trace(keyboard->frontend, "arbiter",
-                           "stage=replay reason=%s keysym=0x%x",
-                           arbiter->buffer_count >= TYPIO_ARBITER_MAX_BUFFERED - 1
-                               ? "overflow" : "cancel",
-                           keysym);
+            typio_log_info("arbiter: replay-and-forward keysym=0x%x phys=0x%x mods=0x%x",
+                           keysym, phys, modifiers);
             arbiter_replay(arbiter, keyboard, session);
             typio_wl_keyboard_process_key_press(keyboard, session, key, keysym,
                                              modifiers, unicode, time);

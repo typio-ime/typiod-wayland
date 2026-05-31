@@ -18,6 +18,7 @@
 #include "tracker_access.h"
 #include "typio/abi/shortcut.h"
 #include "chords.h"
+#include "xkb.h"
 #include "startup.h"
 #include "bridge.h"
 #include "trace.h"
@@ -456,9 +457,16 @@ void typio_wl_key_route_process_press(TypioWlKeyboard *keyboard,
             .unicode   = unicode,
             .time      = time,
             .is_repeat = false,
+            .base_keysym = typio_wl_keyboard_base_keysym(keyboard, key),
         };
         bool is_modifier = typio_key_event_is_modifier_only(&event);
         bool handled = typio_input_context_process_key(session->ctx, &event);
+
+        if (keysym == 0x60 && (modifiers & (TYPIO_MOD_CTRL | TYPIO_MOD_SHIFT))) {
+            typio_log_info("grave diagnostic: handled=%s mods=0x%x phys=0x%x",
+                      handled ? "yes" : "no",
+                      modifiers, keyboard->physical_modifiers);
+        }
 
         if (is_modifier && key_route_is_shift_keysym(keysym)) {
             TypioRegistry *registry =
@@ -624,6 +632,7 @@ void typio_wl_key_route_process_release(TypioWlKeyboard *keyboard,
                 .unicode   = unicode,
                 .time      = time,
                 .is_repeat = false,
+                .base_keysym = typio_wl_keyboard_base_keysym(keyboard, key),
             };
             bool is_modifier = typio_key_event_is_modifier_only(&release_event);
             bool should_cleanup_stale_release =
@@ -678,6 +687,7 @@ void typio_wl_key_route_process_release(TypioWlKeyboard *keyboard,
                 .unicode   = unicode,
                 .time      = time,
                 .is_repeat = false,
+                .base_keysym = typio_wl_keyboard_base_keysym(keyboard, key),
             };
             bool handled = typio_input_context_process_key(session->ctx, &ev);
             if (typio_key_event_is_modifier_only(&ev) &&
@@ -717,6 +727,7 @@ void typio_wl_key_route_process_release(TypioWlKeyboard *keyboard,
             .unicode   = unicode,
             .time      = time,
             .is_repeat = false,
+            .base_keysym = typio_wl_keyboard_base_keysym(keyboard, key),
         };
         bool handled = typio_input_context_process_key(session->ctx, &event);
         if (typio_key_event_is_modifier_only(&event) &&
