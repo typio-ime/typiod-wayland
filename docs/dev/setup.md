@@ -47,7 +47,7 @@ them system-wide.
 | Dependency | Resolution | Notes |
 |---|---|---|
 | **libtypio** | `pkg-config` first, else subproject wrap | Point `PKG_CONFIG_PATH` to a local `../libtypio/target/release` build, or let Meson clone and build it via cargo.  Runtime requires `LD_LIBRARY_PATH` to find the shared library. |
-| **flux** | sibling `../flux` or subproject wrap | Always built as **static** and linked into the binary.  If unresolved, candidate-popup rendering is disabled (stubs are used). |
+| **flux** | sibling `../flux` or subproject wrap | Always built as **static** and linked into the binary.  If unresolved, candidate Panel rendering is disabled (stubs are used). |
 
 **Recommended layout** for active development:
 
@@ -78,7 +78,7 @@ or a system install is enough.
 |---|---|---|
 | `libtypio` | Core framework library (C ABI) | `cargo` |
 | `typio-engine-basic` | Fallback keyboard engine plugin | `cargo` |
-| `flux` | Candidate popup renderer | Meson subproject (auto) |
+| `flux` | Candidate Panel renderer | Meson subproject (auto) |
 
 The commands below assume **sibling checkouts** and that you run every
 command from the `typio-wayland` directory:

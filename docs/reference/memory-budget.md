@@ -8,7 +8,7 @@ Expected process memory footprint for `typio` under typical usage. All values ar
 |---|---|---|---|
 | **flux Vulkan blocks** | — | 128–192 MiB | 2–3 × 64 MiB pool blocks (device-local + host-visible); bounded plateau, not a leak |
 | **Transient ring** | — | 32 MiB | 16 MiB × 2 frames-in-flight per surface |
-| **Swapchain images** | — | <4 MiB | 2–3 images at popup size (grow-only, quantised to 64 px) |
+| **Swapchain images** | — | <4 MiB | 2–3 images at Panel size (grow-only, quantised to 64 px) |
 | **Glyph atlas** | — | 4 MiB | 2048² × R8; one texture, process-lifetime |
 | **RIME engine** | 20–50 MiB | — | Schema data, user dictionary; varies by schema |
 | **Font/FreeType** | 5–10 MiB | — | Font file data, HarfBuzz faces |
@@ -50,7 +50,7 @@ All GPU and CPU caches in typio-wayland are bounded. Nothing grows without limit
 | Layout LRU cache | 128 entries | `PANEL_LAYOUT_CACHE_CAP` in `layout.h` |
 | Font object cache | 64 entries | `FONT_OBJ_CACHE_CAP` in `text_shaper.c` |
 | Font file cache | 32 entries | `FONT_FILE_CACHE_CAP` in `text_shaper.c` |
-| Fallback font cache | 16 entries | `FALLBACK_FONT_CACHE_CAP` in `fallback_cache.c` |
+| Fallback font cache | 16 entries | `FALLBACK_FONT_CACHE_CAP` in `src/ui/panel/fallback_cache.c` |
 | Frame retire ring | 256 items × 3 slots | `PANEL_RETIRE_SLOT_MAX` × `PANEL_RETIRE_DEPTH` in `surface.c` |
 | Panel draw arena | 256 KiB | `flux_arena_init` in `surface.c` |
 | Upload staging buffer | 16 KiB initial, grows on demand | `UPLOAD_STAGING_INITIAL` in `text_shaper.c` |

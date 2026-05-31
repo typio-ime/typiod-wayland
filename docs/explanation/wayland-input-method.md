@@ -1,6 +1,6 @@
 # Wayland Input Method Protocol
 
-`typio` is a Wayland-native input method. Every key the user presses, every preedit string shown, and every candidate popup positioned travels through the `zwp_input_method_v2` family of unstable protocols. This document maps how the daemon implements those protocols, what workarounds it applies to the unstable surface, and where the detailed rules live.
+`typio` is a Wayland-native input method. Every key the user presses, every preedit string shown, and every positioned Panel update travels through the `zwp_input_method_v2` family of unstable protocols. This document maps how the daemon implements those protocols, what workarounds it applies to the unstable surface, and where the detailed rules live.
 
 This is a **connective-tissue** document: it does not replace the protocol specification, the source-code comments, or the deep-dive timing model. It exists so a reader can answer "how does typio handle X?" in one stop rather than grepping across `wl_input_method.c`, `wl_keyboard.c`, and five other explanation files.
 
@@ -16,10 +16,10 @@ The daemon binds five Wayland protocol layers. The input-method layer is the one
 |---|---|
 | `zwp_input_method_manager_v2` | `get_input_method()` → receives the `zwp_input_method_v2` object the daemon listens on |
 | `zwp_input_method_keyboard_grab_v2` | `grab_keyboard()` → receives raw key/modifier/keymap events for the focused input context |
-| `zwp_input_popup_surface_v2` | `get_input_popup_surface()` → positions the candidate popup near the cursor |
+| `zwp_input_popup_surface_v2` | `get_input_popup_surface()` → positions the Panel near the cursor |
 | `zwp_text_input_manager_v3` | The daemon does not bind this directly, but relies on the compositor exposing it so client applications can participate in the text-input session |
-| `wl_compositor` | `create_surface()` → creates the popup `wl_surface` backed by a Vulkan swapchain |
-| `wl_output` | Listens to `scale` events so the popup renders at the correct DPI for each monitor |
+| `wl_compositor` | `create_surface()` → creates the Panel `wl_surface` backed by a Vulkan swapchain |
+| `wl_output` | Listens to `scale` events so the Panel renders at the correct DPI for each monitor |
 
 ### Client-provided interfaces (daemon depends on their presence)
 
@@ -75,7 +75,7 @@ frontend->last_committed_serial = frontend->im_serial;
 
 `last_committed_serial` is a diagnostic breadcrumb. It is also the hook for future reconnect work: if the compositor restarts and the serial resets, the daemon can detect the discontinuity.
 
-This chokepoint is the single place where every protocol write is validated. All preedit updates, commit strings, and popup geometry requests funnel through `typio_wl_commit`.
+This chokepoint is the single place where every protocol write is validated. All preedit updates, commit strings, and Panel geometry requests funnel through `typio_wl_commit`.
 
 ## Keyboard Grab Lifecycle
 
@@ -123,7 +123,7 @@ update_plan = typio_wl_text_ui_plan_update(session->last_preedit_text,
                                            new_text, cursor_pos);
 ```
 
-If `update_plan == PANEL_ONLY`, the popup is repainted synchronously but the expensive `zwp_input_method_v2.set_preedit_string` → `done` round-trip to the application is skipped entirely. This avoids composition-update jank in heavyweight clients like Chrome.
+If `update_plan == PANEL_ONLY`, the Panel is repainted synchronously but the expensive `zwp_input_method_v2.set_preedit_string` → `done` round-trip to the application is skipped entirely. This avoids composition-update jank in heavyweight clients like Chrome.
 
 ## Source Map
 
@@ -135,8 +135,8 @@ If `update_plan == PANEL_ONLY`, the popup is repainted synchronously but the exp
 | `zwp_input_method_keyboard_grab_v2` | `src/frontend/keyboard.c` | Grab create/destroy, key/modifiers/repeat listeners, emergency exit |
 | Key epoch + tracking | `src/input/tracker.{c,h}` | Epoch fence and symmetric press/release |
 | `zwp_virtual_keyboard_v1` | `src/input/bridge.c` | Keymap handoff, readiness gating, unhandled-key forwarding, fail-safe downgrade |
-| `zwp_input_popup_surface_v2` | `src/ui/panel/surface.c` | Popup geometry, present, retry-on-stall |
-| Popup rendering | `src/ui/panel/paint.c` | Vulkan swapchain on `wl_surface` |
+| `zwp_input_popup_surface_v2` | `src/ui/panel/surface.c` | Panel geometry, present, retry-on-stall |
+| Panel rendering | `src/ui/panel/paint.c` | Vulkan swapchain on `wl_surface` |
 | Resume detection | `src/engine/resume.c` | logind + boottime heuristic (records facts) |
 | Protocol XML | `protocols/input-method-unstable-v2.xml` | Wayland protocol definition (upstream) |
 
@@ -144,4 +144,4 @@ If `update_plan == PANEL_ONLY`, the popup is repainted synchronously but the exp
 
 - [Timing Model](timing-model.md) — the derived reduce+diff state model, truth sources, event-loop scheduling
 - [Lifecycle Resilience and Recovery](lifecycle-resilience.md) — suspend/resume, compositor restart, silent grab loss
-- [Popup Appearance](../dev/popup-appearance.md) — Vulkan popup rendering pipeline
+- [Panel Appearance](../dev/panel-appearance.md) — Vulkan Panel rendering pipeline

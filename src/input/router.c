@@ -408,7 +408,7 @@ void typio_wl_key_route_process_press(TypioWlKeyboard *keyboard,
             snprintf(hint, sizeof(hint), "[Voice unavailable: %s]",
                      reason ? reason : "unknown");
             key_set_state(frontend, key, TYPIO_KEY_TRACK_VOICE_PTT_UNAVAIL);
-            typio_panel_show_status(frontend->panel, hint);
+            typio_wl_panel_coordinator_show_status(frontend, TYPIO_WL_UI_OWNER_VOICE, hint);
             decision = key_route_decision(TYPIO_WL_KEY_ACTION_CONSUME,
                                           TYPIO_WL_KEY_REASON_VOICE_PTT_UNAVAILABLE);
             key_route_trace_decision(keyboard, "press-ptt-unavail", key, keysym,
@@ -615,7 +615,7 @@ void typio_wl_key_route_process_release(TypioWlKeyboard *keyboard,
         key_route_trace_decision(keyboard, "release-ptt-unavail", key, keysym,
                                  modifiers, unicode, kstate, decision,
                                  "release");
-        typio_panel_hide_status(frontend->panel);
+        typio_wl_panel_coordinator_hide(frontend, TYPIO_WL_UI_OWNER_VOICE);
         key_clear_tracking(frontend, key);
         typio_log_debug("Voice PTT unavail released: keycode=%u", key);
         return;

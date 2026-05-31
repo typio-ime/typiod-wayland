@@ -41,7 +41,7 @@ concern on this path.
 **Historical note:** earlier revisions painted into a CPU-mapped SHM buffer
 (`WL_SHM_FORMAT_ARGB8888`), and before that flux rendered to a GPU offscreen
 surface and read pixels back via `flux_surface_read_pixels` (which forced an
-`ABGR8888` workaround). Both readback/SHM paths are gone; the popup now presents
+`ABGR8888` workaround). Both readback/SHM paths are gone; the Panel now presents
 its swapchain image directly.
 
 ---

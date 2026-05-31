@@ -521,12 +521,13 @@ static void transition_to_active(TypioWlFrontend *frontend) {
 
     typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_ACTIVE, "focus in complete");
     set_pending_reactivation(frontend, false);
+    typio_wl_panel_coordinator_reset_anchor(frontend);
 
     {
         const TypioEngineStatus *mode =
             typio_instance_get_last_status(frontend->instance);
         if (mode && mode->display_label && mode->display_label[0]) {
-            typio_wl_frontend_show_indicator(frontend, mode->display_label);
+            typio_wl_frontend_show_indicator_on_focus(frontend, mode);
         }
     }
 
@@ -561,12 +562,13 @@ static void handle_reactivation(TypioWlFrontend *frontend) {
 
 static void transition_to_inactive(TypioWlFrontend *frontend, const char *reason) {
     typio_log_info("Input context unfocused");
+    typio_wl_panel_coordinator_reset_anchor(frontend);
     typio_wl_text_ui_reset_tracking(&frontend->panel_update_pending,
                                     &frontend->session->last_preedit_text,
                                     &frontend->session->last_preedit_cursor);
     typio_input_context_focus_out(frontend->session->ctx);
     typio_input_context_reset(frontend->session->ctx);
-    typio_panel_hide(frontend->panel);
+    typio_wl_panel_coordinator_hide_all(frontend);
 
     typio_wl_lifecycle_hard_reset_keyboard(frontend, reason);
     typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_INACTIVE, "focus out complete");
@@ -703,9 +705,11 @@ static void on_commit_callback([[maybe_unused]] TypioInputContext *ctx, const ch
 
     typio_log_debug("Commit: %s", text);
 
+    typio_wl_frontend_record_commit(session->frontend);
+
     /* Clear preedit first */
     typio_wl_set_preedit(session->frontend, "", -1, -1);
-    typio_panel_hide(session->frontend->panel);
+    typio_wl_panel_coordinator_hide(session->frontend, TYPIO_WL_UI_OWNER_CANDIDATE);
 
     /* Commit the text */
     typio_wl_commit_string(session->frontend, text);
@@ -803,7 +807,7 @@ static void update_wayland_text_ui(TypioWlSession *session, TypioInputContext *c
     /* Keep the panel synchronous so candidate navigation updates the visible
      * highlight immediately. When the preedit is unchanged, skip the protocol
      * round-trip to the focused application and only refresh the panel. */
-    typio_panel_update(session->frontend->panel, ctx);
+    bool panel_ok = typio_wl_panel_coordinator_show_candidates(session->frontend, ctx);
     panel_done_ms = typio_wl_monotonic_ms();
 
     session->frontend->panel_update_pending = false;
@@ -813,6 +817,9 @@ static void update_wayland_text_ui(TypioWlSession *session, TypioInputContext *c
      * until the visible highlight catches up with the committed selection. */
     if (typio_panel_present_retry_pending(session->frontend->panel)) {
         session->frontend->panel_update_pending = true;
+    } else if (panel_ok && session->candidate_snapshot.count > 0) {
+        typio_wl_panel_coordinator_mark_anchor_ready(session->frontend,
+                                                     "candidate_present");
     }
     if (update_plan == TYPIO_WL_TEXT_UI_SYNC_PREEDIT_AND_PANEL) {
         if (!plain_text) {

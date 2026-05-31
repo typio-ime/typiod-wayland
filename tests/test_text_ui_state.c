@@ -87,6 +87,27 @@ TEST(flush_panel_update_requires_focused_context) {
     ASSERT_EQ(typio_wl_text_ui_should_flush_panel_update(true, true, true, false), false);
 }
 
+TEST(positioned_ui_waits_for_ready_anchor) {
+    ASSERT_EQ(typio_wl_positioned_ui_plan(false, false, 1000, 1200, 100),
+              TYPIO_WL_POSITIONED_UI_WAIT);
+    ASSERT_EQ(typio_wl_positioned_ui_plan(true, false, 1000, 1050, 100),
+              TYPIO_WL_POSITIONED_UI_WAIT);
+    ASSERT_EQ(typio_wl_positioned_ui_plan(true, true, 1000, 1050, 100),
+              TYPIO_WL_POSITIONED_UI_SHOW);
+}
+
+TEST(positioned_ui_cancels_when_anchor_times_out) {
+    ASSERT_EQ(typio_wl_positioned_ui_plan(true, false, 1000, 1100, 100),
+              TYPIO_WL_POSITIONED_UI_CANCEL);
+    ASSERT_EQ(typio_wl_positioned_ui_plan(true, false, 1000, 1200, 100),
+              TYPIO_WL_POSITIONED_UI_CANCEL);
+}
+
+TEST(positioned_ui_handles_clock_regression_as_wait) {
+    ASSERT_EQ(typio_wl_positioned_ui_plan(true, false, 1000, 900, 100),
+              TYPIO_WL_POSITIONED_UI_WAIT);
+}
+
 int main(void) {
     printf("Running text UI state tests:\n");
     run_test_syncs_panel_only_when_preedit_and_cursor_match();
@@ -96,6 +117,9 @@ int main(void) {
     run_test_reset_tracking_clears_pending_and_preedit_state();
     run_test_reset_tracking_accepts_null_fields();
     run_test_flush_panel_update_requires_focused_context();
+    run_test_positioned_ui_waits_for_ready_anchor();
+    run_test_positioned_ui_cancels_when_anchor_times_out();
+    run_test_positioned_ui_handles_clock_regression_as_wait();
     printf("\nPassed %d/%d tests\n", tests_passed, tests_run);
     return 0;
 }

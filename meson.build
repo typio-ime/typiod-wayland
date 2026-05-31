@@ -69,7 +69,7 @@ if enable_voice
     pipewire_dep = dependency('libpipewire-0.3', required: true)
 endif
 
-# ── flux (GPU canvas for the candidate popup) ──────────────────────────────
+# ── flux (GPU canvas for the candidate Panel) ──────────────────────────────
 # Prefer a sibling checkout (~/projects/flux), else the subprojects wrap.
 flux_sibling = meson.current_source_dir() / '..' / 'flux' / 'meson.build'
 flux_subproject_link = meson.current_source_dir() / 'subprojects' / 'flux'

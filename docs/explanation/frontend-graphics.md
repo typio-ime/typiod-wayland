@@ -39,7 +39,7 @@ flowchart TD
     subgraph seam ["backend seam — the only flux-aware layer"]
         direction LR
         VT["TypioTextShaperVTable<br/>create/metrics/baseline/free"]
-        FX["text_shaper.c · device.c · surface.c<br/>shape · device · present"]
+        FX["paint.c · text_shaper.c · device.c · surface.c<br/>record · shape · device · present"]
     end
     G -. "text via 4-method vtable" .-> VT
     D -. "typio_text_shape_fill()" .-> FX
@@ -85,10 +85,10 @@ It does not begin or end the frame, does not present, does not allocate the
 surface. The panel surface (`surface.c`) owns the frame lifecycle and calls
 `panel_record()` strictly between `flux_canvas_begin` / `flux_canvas_end`.
 
-### 4. The backend seam — text-shaper vtable + a handful of flux calls
+### 4. The backend seam — paint target, text shaper, device, and surface
 
 This is the only layer that names a concrete graphics library, and it is
-deliberately tiny. It has two parts:
+deliberately small. It has three parts:
 
 - **Text-shaper vtable** (`src/ui/panel/text_shaper.h`, `TypioTextShaperVTable`):
   four function pointers — `create_layout`, `get_metrics`, `get_baseline`,
@@ -108,12 +108,19 @@ deliberately tiny. It has two parts:
   plane characters (emoji, rare CJK). See
   [ADR-0016](../adr/0016-per-glyph-font-fallback.md).
 
-- **Canvas / device / surface calls** confined to `text_shaper.c`, `device.c`,
-  and `surface.c`: get a lazily-created shared device (`typio_render_device_get`,
-  `device.c`), create a surface bound to the input-popup `wl_surface`, run the
-  frame lifecycle (`flux_surface_begin_frame` → `flux_canvas_begin`/`end` →
+- **Paint target** (`src/ui/panel/paint.h`): the narrow canvas boundary.
+  `panel_record()` receives a `flux_canvas` target today, but it does not own a
+  frame or a surface. If the canvas backend changes, this is the small recorder
+  layer that changes with it.
+
+- **Canvas / device / surface calls** confined to `paint.c`, `text_shaper.c`,
+  `device.c`, and `surface.c`: record clear/fill/blit commands (`paint.c`),
+  fill shaped text (`text_shaper.c`), get a lazily-created shared device
+  (`typio_render_device_get`, `device.c`), create a surface bound to the
+  input-popup `wl_surface`, run the frame lifecycle
+  (`flux_surface_begin_frame` → `flux_canvas_begin`/`end` →
   `flux_frame_present`), and recover the swapchain on stall
-  (`flux_surface_resize`) — all in `surface.c`.
+  (`flux_surface_resize`) — the lifecycle pieces all remain in `surface.c`.
 
 ### 5. Present — Vulkan swapchain onto the `wl_surface`
 
@@ -153,15 +160,16 @@ The architecture then enforces that the dependency stays confined:
    calls scattered across the frontend.
 3. **Colour is decoupled from shaping** (ADR-0011), so shapes carry no
    backend paint state.
-4. **Concrete flux calls live in three files** (`text_shaper.c`, `device.c`,
-   `surface.c`). A no-op `stub.c` already implements the entire Panel interface
-   for builds without flux (`HAVE_FLUX` off) — proof that the upper pipeline
-   compiles and runs against an empty backend.
+4. **Concrete flux calls live at the backend boundary** (`paint.c`,
+   `text_shaper.c`, `device.c`, `surface.c`). A no-op `stub.c` already
+   implements the entire Panel interface for builds without flux (`HAVE_FLUX`
+   off) — proof that the upper pipeline compiles and runs against an empty
+   backend.
 
-Porting to another canvas library therefore means rewriting `text_shaper.c` /
-`device.c` and the present/surface plumbing in `surface.c`, and reimplementing
-the four vtable methods. The content model, layout, paint structure, LRU cache,
-theming, and the entire frontend above them do not change.
+Porting to another canvas library therefore means rewriting the paint target,
+`text_shaper.c` / `device.c`, the present/surface plumbing in `surface.c`, and
+the four vtable methods. The content model, layout, LRU cache, theming, and the
+entire frontend above them do not change.
 
 ## A corollary: graphics and input correctness are decoupled
 
@@ -178,11 +186,13 @@ it.
 ## See also
 
 - [ADR-0005 — Unified Panel Backend](../adr/0005-unified-panel-backend.md) — the GPU-free content model.
+- [Panel Ontology](panel-ontology.md) — the producer / owner / anchor vocabulary around the Panel.
 - [ADR-0006](../adr/0006-resilient-candidate-popup-present.md) / [ADR-0010](../adr/0010-non-blocking-candidate-popup-present.md) — present-side resilience (orthogonal to the pipeline).
 - [ADR-0011 — Colour-Independent Coverage Glyphs](../adr/0011-colour-independent-coverage-glyphs.md) — why shapes carry no colour.
 - [ADR-0012 — Glyph Atlas Shared Texture](../adr/0012-glyph-atlas-shared-texture.md) / [ADR-0013](../adr/0013-grow-only-popup-swapchain.md) — backend-internal optimisations.
 - [ADR-0014 — Canonical Panel Vocabulary](../adr/0014-canonical-panel-vocabulary.md) — the object model and naming.
-- [Panel Appearance](../dev/popup-appearance.md) — theming and configuration of what gets drawn.
+- [Rendering Code Organization](../dev/rendering-organization.md) — contributor rules for placing UI and backend code.
+- [Panel Appearance](../dev/panel-appearance.md) — theming and configuration of what gets drawn.
 
 ## Glossary
 

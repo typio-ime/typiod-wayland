@@ -8,7 +8,7 @@
 # runtime state under $XDG_STATE_HOME/typio, so an installation may start
 # with no configured engine and resume the last active one later.
 #
-# Frontend styling (popup theme, fonts, colours) lives in wayland.toml next
+# Frontend styling (Panel theme, fonts, colours) lives in wayland.toml next
 # to this file.
 #
 # For the full reference of every key, see docs/reference/configuration.md.

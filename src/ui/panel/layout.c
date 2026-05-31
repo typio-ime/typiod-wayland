@@ -249,7 +249,7 @@ static void compute_positions_vertical(PanelGeometry *g, int pre_h_used) {
     }
 
     g->panel_w = content_w + PANEL_PAD_X * 2;
-    if (g->panel_w < PANEL_MIN_WIDTH) g->panel_w = PANEL_MIN_WIDTH;
+    if (g->row_count > 0 && g->panel_w < PANEL_MIN_WIDTH) g->panel_w = PANEL_MIN_WIDTH;
     g->panel_h = content_h + PANEL_PAD_Y * 2;
 
     int y = PANEL_PAD_Y;
@@ -309,7 +309,7 @@ static void compute_positions_horizontal(PanelGeometry *g, int pre_h_used) {
     if (pre_h_used && g->row_count > 0) content_h += PANEL_SECTION_GAP;
 
     g->panel_w = content_w + PANEL_PAD_X * 2;
-    if (g->panel_w < PANEL_MIN_WIDTH) g->panel_w = PANEL_MIN_WIDTH;
+    if (g->row_count > 0 && g->panel_w < PANEL_MIN_WIDTH) g->panel_w = PANEL_MIN_WIDTH;
     g->panel_h = content_h + PANEL_PAD_Y * 2;
 
     int y = PANEL_PAD_Y;

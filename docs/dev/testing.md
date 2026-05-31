@@ -66,7 +66,7 @@ Add or update tests when changing:
 - runtime config reload, config-watch debounce, or event-loop scheduling
 - voice service state transitions, reload deferral, or completion dispatch
 - status/tray D-Bus dispatch loops
-- candidate popup layout, rendering, or state classification
+- candidate Panel layout, rendering, or state classification
 - reconciler divergence detection and repair logic
 
 Prefer small state-policy tests for Wayland behavior. Do not rely only on manual compositor testing when a bug can be reduced to a helper or state model.

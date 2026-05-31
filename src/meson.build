@@ -55,6 +55,7 @@ if enable_wayland
         'engine/lifecycle.c',
         'input/modifiers.c',
         'frontend/event_loop.c',
+        'frontend/panel_coordinator.c',
         'frontend/runtime_config.c',
         'frontend/watchdog.c',
         'input/xkb.c',
@@ -86,8 +87,8 @@ if enable_wayland
             'ui/panel/paint.c',
             'ui/panel/text_shaper.c',
             'ui/panel/device.c',
-            'ui/fallback_cache.c',
-            'ui/glyph_pack.c',
+            'ui/panel/fallback_cache.c',
+            'ui/panel/glyph_pack.c',
             'ui/panel/theme.c',
         )
     else

@@ -3,7 +3,7 @@
 # Location: $XDG_CONFIG_HOME/typio/wayland.toml
 #          (defaults to ~/.config/typio/wayland.toml)
 #
-# This file owns popup styling for the Wayland frontend. Framework policy,
+# This file owns Panel styling for the Wayland frontend. Framework policy,
 # shortcuts, voice runtime, and per-engine settings live in core.toml next
 # to it. Last-used engine selection is runtime state, not config.
 #
@@ -16,14 +16,21 @@ panel_theme = "auto"
 # Candidate layout: "horizontal" or "vertical"  (default: "vertical")
 candidate_layout = "vertical"
 
-# Popup font size in points, range 6–72  (default: 11)
+# Panel font size in points, range 6–72  (default: 11)
 font_size = 11
 
-# Font family for the popup  (default: "Sans")
+# Font family for the Panel  (default: "Sans")
 # font_family = "Noto Sans CJK SC"
 
-# Show engine mode label (e.g. "中" / "A") in popup  (default: false)
+# Show engine mode label (e.g. "中" / "A") in the Panel  (default: false)
 # panel_mode_indicator = false
+
+# Try a no-op text-input commit before falling back when status UI needs a
+# cursor anchor but the compositor has not sent one yet. This improves Chrome
+# and Firefox indicator/voice placement when they update caret rectangles only
+# after input-method commits. (default: true)
+# anchor_probe = true
+# anchor_probe_timeout_ms = 150
 
 # ── Custom colour schemas ─────────────────────────────────────────────
 # Define per-channel overrides for the light and/or dark variants.

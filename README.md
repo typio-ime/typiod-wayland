@@ -5,7 +5,7 @@ framework. Installs the `typio` binary.
 
 It embeds [libtypio](../libtypio) and provides the platform adapter layer:
 the Wayland text-input/input-method v2 client, virtual-keyboard bridge,
-the candidate popup (rendered with flux/Vulkan), the UDS control socket,
+the candidate Panel (rendered with flux/Vulkan), the UDS control socket,
 the D-Bus status interface, the StatusNotifierItem tray, and PipeWire
 voice capture. It translates Wayland/D-Bus events into libtypio
 abstractions and drives libtypio's callbacks back onto the compositor.
@@ -19,7 +19,7 @@ engine paths.
 
 Requires [libtypio](https://github.com/ming2k/libtypio) (either installed
 system-wide or available via the meson wrap), Wayland, xkbcommon,
-fontconfig/harfbuzz/freetype, D-Bus, and (for the popup) flux.
+fontconfig/harfbuzz/freetype, D-Bus, and (for the Panel) flux.
 
 `libtypio` is resolved by pkg-config first.  Set `PKG_CONFIG_PATH` to point
 at a local cargo build, or rely on a system install:

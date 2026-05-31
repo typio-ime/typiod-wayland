@@ -41,3 +41,28 @@ bool typio_wl_text_ui_should_flush_panel_update(bool panel_update_pending,
                                                 bool context_focused) {
     return panel_update_pending && has_session && has_context && context_focused;
 }
+
+TypioWlPositionedUiPlan typio_wl_positioned_ui_plan(bool pending,
+                                                    bool anchor_ready,
+                                                    uint64_t since_ms,
+                                                    uint64_t now_ms,
+                                                    uint64_t timeout_ms) {
+    if (!pending) {
+        return TYPIO_WL_POSITIONED_UI_WAIT;
+    }
+
+    if (anchor_ready) {
+        return TYPIO_WL_POSITIONED_UI_SHOW;
+    }
+
+    uint64_t elapsed_ms = 0;
+    if (since_ms > 0 && now_ms >= since_ms) {
+        elapsed_ms = now_ms - since_ms;
+    }
+
+    if (since_ms > 0 && elapsed_ms >= timeout_ms) {
+        return TYPIO_WL_POSITIONED_UI_CANCEL;
+    }
+
+    return TYPIO_WL_POSITIONED_UI_WAIT;
+}

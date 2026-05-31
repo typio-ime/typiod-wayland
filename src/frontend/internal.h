@@ -58,6 +58,13 @@ typedef struct TypioWlKeyboard TypioWlKeyboard;
 typedef struct TypioPanel TypioPanel;
 typedef struct TypioWlOutput TypioWlOutput;
 
+typedef enum TypioWlUiOwner {
+    TYPIO_WL_UI_OWNER_NONE = 0,
+    TYPIO_WL_UI_OWNER_CANDIDATE = 1,
+    TYPIO_WL_UI_OWNER_INDICATOR = 2,
+    TYPIO_WL_UI_OWNER_VOICE = 3,
+} TypioWlUiOwner;
+
 typedef enum TypioWlLoopStage {
     TYPIO_WL_LOOP_STAGE_IDLE = 0,
     TYPIO_WL_LOOP_STAGE_PANEL_UPDATE,
@@ -251,6 +258,7 @@ struct TypioWlFrontend {
     TypioWlSession *session;
     TypioWlKeyboard *keyboard;
     TypioPanel *panel;
+    TypioWlUiOwner ui_owner;
     TypioWlIdentityProvider *identity_provider;
     TypioWlIdentity current_identity;
 
@@ -305,6 +313,23 @@ struct TypioWlFrontend {
 
     int indicator_timer_fd;
     bool indicator_active;
+    uint64_t last_commit_ms;
+    uint64_t position_anchor_generation;
+    uint64_t position_anchor_ready_generation;
+    uint64_t position_anchor_probe_generation;
+
+    #define TYPIO_POSITIONED_UI_LABEL_CAP 256
+    bool positioned_ui_pending;
+    TypioWlUiOwner positioned_ui_pending_owner;
+    uint64_t positioned_ui_pending_since_ms;
+    char positioned_ui_pending_label[TYPIO_POSITIONED_UI_LABEL_CAP];
+
+    #define TYPIO_INDICATOR_MODE_CACHE_CAP 8
+    struct {
+        char engine[64];
+        char display_label[64];
+    } indicator_mode_cache[TYPIO_INDICATOR_MODE_CACHE_CAP];
+    size_t indicator_mode_cache_count;
 
     /* Configurable shortcut bindings */
     TypioShortcutConfig shortcuts;
@@ -333,9 +358,31 @@ void typio_wl_frontend_handle_config_watch(TypioWlFrontend *frontend);
 int typio_wl_frontend_get_config_reload_fd(TypioWlFrontend *frontend);
 void typio_wl_frontend_dispatch_config_reload(TypioWlFrontend *frontend);
 
+/* Panel coordinator: owner arbitration and position-anchor policy. */
+bool typio_wl_panel_coordinator_show_candidates(TypioWlFrontend *frontend,
+                                                 TypioInputContext *ctx);
+bool typio_wl_panel_coordinator_show_status(TypioWlFrontend *frontend,
+                                             TypioWlUiOwner owner,
+                                             const char *text);
+void typio_wl_panel_coordinator_hide(TypioWlFrontend *frontend,
+                                      TypioWlUiOwner owner);
+void typio_wl_panel_coordinator_hide_all(TypioWlFrontend *frontend);
+void typio_wl_panel_coordinator_flush_pending(TypioWlFrontend *frontend);
+void typio_wl_panel_coordinator_cancel_pending(TypioWlFrontend *frontend);
+int typio_wl_panel_coordinator_anchor_timeout_ms(TypioWlFrontend *frontend);
+void typio_wl_panel_coordinator_reset_anchor(TypioWlFrontend *frontend);
+void typio_wl_panel_coordinator_mark_anchor_ready(TypioWlFrontend *frontend,
+                                                   const char *reason);
+bool typio_wl_panel_coordinator_anchor_ready(const TypioWlFrontend *frontend);
+
 bool typio_wl_frontend_init_indicator(TypioWlFrontend *frontend);
 void typio_wl_frontend_show_indicator(TypioWlFrontend *frontend,
                                        const char *text);
+void typio_wl_frontend_show_indicator_for_state(TypioWlFrontend *frontend,
+                                                 const TypioEngineStatus *mode);
+void typio_wl_frontend_show_indicator_on_focus(TypioWlFrontend *frontend,
+                                                const TypioEngineStatus *mode);
+void typio_wl_frontend_record_commit(TypioWlFrontend *frontend);
 void typio_wl_frontend_hide_indicator(TypioWlFrontend *frontend);
 int typio_wl_frontend_get_indicator_fd(TypioWlFrontend *frontend);
 void typio_wl_frontend_dispatch_indicator_timer(TypioWlFrontend *frontend);

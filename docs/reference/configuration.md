@@ -5,7 +5,7 @@ Typio uses two files under `$XDG_CONFIG_HOME/typio` (default `~/.config/typio`):
 | File | Owner | What it controls |
 |------|-------|------------------|
 | `core.toml` | **libtypio** (framework) | Engine registry, shortcuts, notifications, voice runtime, per-engine settings |
-| `wayland.toml` | **typio-wayland** (this host) | Popup styling: theme, fonts, colours, layout |
+| `wayland.toml` | **typio-wayland** (this host) | Panel styling: theme, fonts, colours, layout |
 
 Both files are read from the same directory.  The directory itself is created
 and managed by libtypio (`typio_instance_get_config_dir`).  If you need a
@@ -128,9 +128,11 @@ Voice session timeout:
 |-----|------|---------|-------------|
 | `panel_theme` | string | `"auto"` | `"auto"` (follow desktop), `"light"`, or `"dark"`. |
 | `candidate_layout` | string | `"vertical"` | `"horizontal"` or `"vertical"`. |
-| `font_size` | int | `11` | Popup text size in points (6–72). |
+| `font_size` | int | `11` | Panel text size in points (6–72). |
 | `font_family` | string | `"Sans"` | Font family name.  Use a name known to Fontconfig. |
-| `panel_mode_indicator` | bool | `false` | Show the engine mode label (e.g. "中" / "A") inside the popup. |
+| `panel_mode_indicator` | bool | `false` | Show the engine mode label (e.g. "中" / "A") inside the Panel. |
+| `anchor_probe` | bool | `true` | Send one no-op input-method commit per activation when positioned status UI is waiting for a cursor anchor. |
+| `anchor_probe_timeout_ms` | int | `150` | Milliseconds to wait for anchor readiness before dropping pending positioned status UI (50–1000). |
 
 ### `[display.colors.light]` and `[display.colors.dark]`
 
@@ -140,8 +142,8 @@ channel.
 
 | Key | Description |
 |-----|-------------|
-| `background` | Popup background (RGBA) |
-| `border` | Popup border (RGBA) |
+| `background` | Panel background (RGBA) |
+| `border` | Panel border (RGBA) |
 | `text` | Candidate text colour |
 | `muted` | Candidate index labels and mode indicator |
 | `preedit` | Preedit text colour |
@@ -167,5 +169,5 @@ Keys that **require a restart** to take effect:
 ## See also
 
 - `data/core.toml.example` — annotated starter for framework policy
-- `data/wayland.toml.example` — annotated starter for popup styling
+- `data/wayland.toml.example` — annotated starter for Panel styling
 - [Engine Discovery Reference](engine-discovery.md) — how engine plugins are found and named

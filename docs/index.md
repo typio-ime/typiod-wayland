@@ -1,6 +1,6 @@
 # Typio Wayland Documentation
 
-The Linux/Wayland host for the [Typio](../typio) input method framework. This repository contains the `typio` binary and its supporting code: the Wayland input-method frontend, candidate popup renderer, UDS control surface (TIP v1), system tray, and voice capture plumbing.
+The Linux/Wayland host for the [Typio](../typio) input method framework. This repository contains the `typio` binary and its supporting code: the Wayland input-method frontend, candidate Panel renderer, UDS control surface (TIP v1), system tray, and voice capture plumbing.
 
 ## Sections
 
@@ -13,6 +13,7 @@ The Linux/Wayland host for the [Typio](../typio) input method framework. This re
   - [Engine Discovery Reference](reference/engine-discovery.md) — search path, file-name rules, icons
 - **[Explanation](explanation/)** — Understanding-oriented design documents.
   - [Wayland Input Method Protocol](explanation/wayland-input-method.md)
+  - [Panel Ontology](explanation/panel-ontology.md)
   - [Frontend Graphics](explanation/frontend-graphics.md)
   - [Timing Model](explanation/timing-model.md)
   - [Lifecycle Resilience and Recovery](explanation/lifecycle-resilience.md)
@@ -21,7 +22,8 @@ The Linux/Wayland host for the [Typio](../typio) input method framework. This re
   - [Developer Setup](dev/setup.md)
   - [Testing](dev/testing.md)
   - [Code Style](dev/code-style.md)
-  - [Popup Appearance](dev/popup-appearance.md)
+  - [Rendering Code Organization](dev/rendering-organization.md)
+  - [Panel Appearance](dev/panel-appearance.md)
   - [Maintenance Manual](dev/maintenance.md)
 
 ## Quick Links

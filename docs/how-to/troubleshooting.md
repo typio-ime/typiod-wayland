@@ -66,7 +66,7 @@ That is expected with the `basic` engine. It commits printable characters direct
 
 For richer behavior, install an external engine plugin.
 
-With the `rime` plugin, the daemon renders candidates through a Wayland popup surface when the required popup objects are available. If you still only see inline candidates, the daemon likely failed to initialize `wl_compositor` or the popup surface itself.
+With the `rime` plugin, the daemon renders candidates through the Panel when the required Wayland input-popup objects are available. If you still only see inline candidates, the daemon likely failed to initialize `wl_compositor` or the input-popup surface itself.
 
 If edits under `~/.local/share/typio/rime` do not affect candidate behavior, switch to the `rime` engine and run:
 
@@ -76,9 +76,9 @@ typio rime deploy
 
 That asks the daemon to rerun librime deployment and regenerate `~/.local/share/typio/rime/build/*.yaml` from your source YAML files.
 
-If the popup looks blurry on a 2x HiDPI output, make sure you are running a recent build. The popup now follows `wl_surface.enter/leave` and `wl_output.scale`, so integer output scales should render sharply after a restart of the daemon.
+If the Panel looks blurry on a 2x HiDPI output, make sure you are running a recent build. The Panel now follows `wl_surface.enter/leave` and `wl_output.scale`, so integer output scales should render sharply after a restart of the daemon.
 
-If the popup theme does not match your desktop, set one explicitly in `~/.config/typio/wayland.toml`:
+If the Panel theme does not match your desktop, set one explicitly in `~/.config/typio/wayland.toml`:
 
 ```toml
 [display]
@@ -92,7 +92,7 @@ If the tray shows a generic icon instead of the Rime icon, make sure you are run
 
 **Symptom:** Normal typing remains smooth, but scrolling through the candidate list with arrow keys or page keys becomes visibly delayed or appears to skip frames. The problem only appears after the daemon has been running for several hours and worsens over time.
 
-**Root cause (fixed in current builds):** Each time a Wayland keymap event was received from the compositor, the daemon duplicated the file descriptor and sent the copy to the virtual keyboard, but never closed the duplicate. Every application focus switch leaks one file descriptor. The Linux per-process fd limit is 1024 by default; as the table fills up, calls that need a new fd (such as `mkstemp` inside the SHM buffer allocator) start failing. Failed buffer allocation causes candidate popup frames to be silently dropped during navigation.
+**Root cause (fixed in current builds):** Each time a Wayland keymap event was received from the compositor, the daemon duplicated the file descriptor and sent the copy to the virtual keyboard, but never closed the duplicate. Every application focus switch leaks one file descriptor. The Linux per-process fd limit is 1024 by default; as the table fills up, calls that need a new fd (such as `mkstemp` inside the SHM buffer allocator) start failing. Failed buffer allocation causes candidate Panel frames to be silently dropped during navigation.
 
 **Diagnosis:** While the daemon is running, count the leaked entries:
 
@@ -138,7 +138,7 @@ Read the last fault snapshot from the recent-log dump:
 
 ```bash
 find ~/.local/state/typio/logs -type f -name '*.log' 2>/dev/null
-rg -n "Virtual keyboard|fail-safe|keymap timeout|Keyboard grab|Wayland text UI slow|Popup slow render|Rime sync slow" ~/.local/state/typio/logs/latest.log
+rg -n "Virtual keyboard|fail-safe|keymap timeout|Keyboard grab|Wayland text UI slow|Panel slow render|Rime sync slow" ~/.local/state/typio/logs/latest.log
 ```
 
 Current builds keep a single persisted recent-log snapshot at `~/.local/state/typio/logs/latest.log`, replacing that file each time a new dump is written.

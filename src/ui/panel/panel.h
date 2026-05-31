@@ -26,7 +26,7 @@ typedef struct TypioPanel TypioPanel;
 
 /* Create the panel: its wl_surface, input-popup surface, HiDPI helpers, and
  * shaper/layout caches. Returns NULL if the compositor or input-method
- * globals are unavailable (popup disabled) or on allocation failure. */
+ * globals are unavailable (Panel disabled) or on allocation failure. */
 TypioPanel *typio_panel_create(TypioWlFrontend *frontend);
 void typio_panel_destroy(TypioPanel *panel);
 

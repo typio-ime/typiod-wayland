@@ -186,12 +186,12 @@ The Wayland frontend is designed for sustained operation (days to weeks). Change
 
 - **Font-object cache** (`FONT_OBJ_CACHE_CAP` = 64) — `FcPattern` → `TypioFluxFont`.
 - **Font-file cache** (`FONT_FILE_CACHE_CAP` = 32) — `(path, weight)` → `FcPattern` + file handle.
-- **Fallback-font cache** (`FALLBACK_FONT_CACHE_CAP` = 16, `src/ui/fallback_cache.c`) — coverage-keyed LRU. Each resolved fallback font remembers the `FcCharSet` it covers; a later text reuses it when its codepoints are a subset (`FcCharSetIsSubset`). Keyed on coverage, **not** the text string, so a long CJK session — an unbounded stream of distinct phrases served by one font — resolves ~once per script instead of re-running `FcFontSort` per phrase. (The earlier text-keyed, cap-then-stop cache degraded to a ~0 % hit rate and re-ran the resolver on every composition; unit-tested in `tests/test_fallback_cache.c`.)
+- **Fallback-font cache** (`FALLBACK_FONT_CACHE_CAP` = 16, `src/ui/panel/fallback_cache.c`) — coverage-keyed LRU. Each resolved fallback font remembers the `FcCharSet` it covers; a later text reuses it when its codepoints are a subset (`FcCharSetIsSubset`). Keyed on coverage, **not** the text string, so a long CJK session — an unbounded stream of distinct phrases served by one font — resolves ~once per script instead of re-running `FcFontSort` per phrase. (The earlier text-keyed, cap-then-stop cache degraded to a ~0 % hit rate and re-ran the resolver on every composition; unit-tested in `tests/test_fallback_cache.c`.)
 
 There is also a **glyph atlas** (`src/ui/panel/text_shaper.c`, `glyph_atlas_*`): a
 single persistent R8 texture holding every rasterised glyph, keyed
 `(font_id, glyph_id)` and packed by the skyline allocator in
-`src/ui/glyph_pack.c` (ADR-0012). It is bounded (one ~4 MiB texture) and the
+`src/ui/panel/glyph_pack.c` (ADR-0012). It is bounded (one ~4 MiB texture) and the
 reason candidate paging no longer uploads textures on the hot path. It is keyed
 on `font_id`, so it is dropped alongside the font objects in
 `typio_text_shaper_purge_font_caches()` and rebuilt lazily.
@@ -231,7 +231,7 @@ When investigating long-term slowdown:
 
 ### Diagnosing event-loop stalls with system tools
 
-A "laggy popup / candidate switching" report is usually an **off-CPU** stall
+A "laggy Panel / candidate switching" report is usually an **off-CPU** stall
 (blocked on the compositor or GPU), not a CPU hotspot. Profile the **already
 laggy live process** — do not restart it, the degraded state is the evidence.
 Reading code and guessing is how the 2026-05 investigation first blamed the
@@ -260,7 +260,7 @@ uses `perf_event_open` (not ptrace) and works on your own process.
    wsi_wl_swapchain_queue_present` ~86 % of the time — a FIFO present blocking
    on compositor buffer release (fixed by ADR-0010's non-blocking present).
 
-A laggy popup had **layered** causes; do not stop at the first one (the
+A laggy Panel had **layered** causes; do not stop at the first one (the
 2026-05 investigation called "fixed" twice before the real cause). Confirmed
 chain:
 
@@ -293,7 +293,7 @@ chain:
   on-CPU samples in `wsi_wl_display_init → wl_display_roundtrip_queue →
   wsi_wl_surface_get_formats/get_present_modes` — i.e. **swapchain recreation
   during normal use**. `ensure_fx_surface` rebuilt the swapchain whenever the
-  popup width changed (`flux_surface_resize` = `vkDeviceWaitIdle` + teardown +
+  Panel width changed (`flux_surface_resize` = `vkDeviceWaitIdle` + teardown +
   WSI roundtrips), and **every candidate page changes the width**, so paging ran
   a full GPU stall + swapchain rebuild per keypress on the IME loop. No prior
   ADR (0010 present mode, 0011/0012 textures) touched this path, which is why
@@ -313,7 +313,7 @@ chain:
 - **Never "new text run ⇒ new texture ⇒ synchronous upload."** Glyphs go in a
   shared, persistent atlas, rasterised once and referenced by sub-rect
   (ADR-0012); colour stays a draw-time tint, never baked per texture (ADR-0011).
-  A synchronous `flux_image_create`/`flux_image_update_region` on the popup
+  A synchronous `flux_image_create`/`flux_image_update_region` on the Panel
   draw path (look for `submit_one_shot_and_wait → vkWaitForFences`) is the
   regression to watch for.
 - A symptom that **survives swapping the graphics library** is architectural —
@@ -333,7 +333,7 @@ chain:
   saved chasing already-fixed code.
 - **Never rebuild a swapchain on a per-keystroke size change.**
   `flux_surface_resize` is `vkDeviceWaitIdle` + swapchain teardown/rebuild + WSI
-  compositor roundtrips — all synchronous on the IME loop. A popup whose width
+  compositor roundtrips — all synchronous on the IME loop. A Panel whose width
   tracks content must use a **grow-only buffer cropped by
   `wp_viewport_set_source`** (ADR-0013), not a resize per frame.
 - A precise *behavioural* repro (what triggers it vs what doesn't) narrows the

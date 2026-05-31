@@ -616,6 +616,7 @@ static void on_text_input_rectangle(void *data,
     s->text_input_y = y;
     s->text_input_w = w;
     s->text_input_h = h;
+    typio_wl_panel_coordinator_mark_anchor_ready(s->frontend, "text_input_rectangle");
 }
 
 static const struct zwp_input_popup_surface_v2_listener popup_surface_listener = {

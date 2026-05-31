@@ -197,20 +197,23 @@ static void voice_event_cb(const TypioVoiceSessionEvent *event, void *user_data)
     case TYPIO_VOICE_EVENT_STATE_CHANGE:
         switch (event->state) {
         case TYPIO_VOICE_STATE_LOADING:
-            typio_panel_show_status(frontend->panel,
-                                                  "[Loading voice model...]");
+            typio_wl_panel_coordinator_show_status(frontend,
+                                    TYPIO_WL_UI_OWNER_VOICE,
+                                    "[Loading voice model...]");
             break;
         case TYPIO_VOICE_STATE_RECORDING:
-            typio_panel_show_status(frontend->panel,
-                                                  "[Recording...]");
+            typio_wl_panel_coordinator_show_status(frontend,
+                                    TYPIO_WL_UI_OWNER_VOICE,
+                                    "[Recording...]");
             break;
         case TYPIO_VOICE_STATE_PROCESSING:
-            typio_panel_show_status(frontend->panel,
-                                                  "[Processing...]");
+            typio_wl_panel_coordinator_show_status(frontend,
+                                    TYPIO_WL_UI_OWNER_VOICE,
+                                    "[Processing...]");
             break;
         case TYPIO_VOICE_STATE_IDLE:
         default:
-            typio_panel_hide_status(frontend->panel);
+            typio_wl_panel_coordinator_hide(frontend, TYPIO_WL_UI_OWNER_VOICE);
             break;
         }
         break;
@@ -230,8 +233,9 @@ static void voice_event_cb(const TypioVoiceSessionEvent *event, void *user_data)
         }
         break;
     case TYPIO_VOICE_EVENT_ERROR:
-        typio_panel_show_status(frontend->panel,
-                                              event->error);
+        typio_wl_panel_coordinator_show_status(frontend,
+                                TYPIO_WL_UI_OWNER_VOICE,
+                                event->error);
         break;
     }
 }

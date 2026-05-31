@@ -54,7 +54,7 @@ The binary itself requires:
 - `wayland-client`, `xkbcommon` — for the Wayland frontend
 - `dbus-1` — for status bus and tray (if enabled at build time)
 - `libpipewire-0.3` — for voice capture (if enabled at build time)
-- Vulkan loader, FreeType, HarfBuzz, fontconfig — for the candidate popup renderer
+- Vulkan loader, FreeType, HarfBuzz, fontconfig — for the candidate Panel renderer
 
 ## Engine plugins
 

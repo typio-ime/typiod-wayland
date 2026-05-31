@@ -1,5 +1,6 @@
 /*
- * Regression tests for the glyph-atlas skyline packer (src/ui/glyph_pack.c).
+ * Regression tests for the glyph-atlas skyline packer
+ * (src/ui/panel/glyph_pack.c).
  *
  * The bug these guard against: candidate-switch lag that returned across
  * multiple graphics libraries. The root cause was "one texture per text run,

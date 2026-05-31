@@ -2,8 +2,7 @@
 
 ## Language versions
 
-- C23 for C code (Wayland frontend, protocol glue)
-- C23 for all code (Wayland frontend, protocol glue, popup rendering)
+- C23 for all code (Wayland frontend, protocol glue, Panel rendering)
 
 ## Formatting
 

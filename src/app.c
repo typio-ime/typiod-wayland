@@ -301,8 +301,8 @@ static void typio_update_tray_engine_status(TypioApp *app) {
 #endif
 
 static void typio_on_mode_change(TypioInstance *instance,
-                                          const TypioEngineStatus *mode,
-                                          void *user_data) {
+                                 const TypioEngineStatus *mode,
+                                 void *user_data) {
     TypioApp *app = user_data;
     TypioRegistry *registry;
 
@@ -317,7 +317,7 @@ static void typio_on_mode_change(TypioInstance *instance,
                                                    mode->profile_id);
         }
         if (app->wl_frontend && mode && mode->display_label && mode->display_label[0]) {
-            typio_wl_frontend_show_indicator(app->wl_frontend, mode->display_label);
+            typio_wl_frontend_show_indicator_for_state(app->wl_frontend, mode);
         }
 #endif
         typio_free_string(name);
@@ -331,8 +331,8 @@ static void typio_on_mode_change(TypioInstance *instance,
 }
 
 static void typio_on_status_icon_change(TypioInstance *instance,
-                                                const char *icon_name,
-                                                void *user_data) {
+                                        const char *icon_name,
+                                        void *user_data) {
     TypioApp *app = user_data;
 
     (void) instance;
@@ -344,8 +344,8 @@ static void typio_on_status_icon_change(TypioInstance *instance,
 }
 
 static void typio_on_engine_change(TypioInstance *instance,
-                                           const TypioEngineInfo *engine,
-                                           void *user_data) {
+                                   const TypioEngineInfo *engine,
+                                   void *user_data) {
     TypioApp *app = user_data;
     TypioRegistry *registry;
     char *active_name;
@@ -367,7 +367,7 @@ static void typio_on_engine_change(TypioInstance *instance,
         if (app && app->wl_frontend) {
             typio_wl_frontend_remember_active_engine(app->wl_frontend,
                                                      active_name);
-            typio_wl_frontend_show_indicator(app->wl_frontend, active_name);
+            typio_wl_frontend_show_indicator_for_state(app->wl_frontend, nullptr);
         }
 #endif
         typio_log_info("Engine changed to: %s", active_name);

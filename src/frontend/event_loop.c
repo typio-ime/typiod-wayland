@@ -14,11 +14,14 @@
 #include "panel.h"
 #include "reconciler.h"
 #include "state.h"
+#include "trace.h"
 #include "typio/abi/input_context.h"
 #include "typio/abi/log.h"
 
 #include <errno.h>
+#include <inttypes.h>
 #include <poll.h>
+#include <stdio.h>
 #include <string.h>
 
 typedef struct TypioWlLoopAuxFds {
@@ -29,6 +32,40 @@ typedef struct TypioWlLoopAuxFds {
 static void event_loop_flush_pending_panel(TypioWlFrontend *frontend) {
     if (!frontend || !frontend->session) {
         return;
+    }
+
+    if (frontend->positioned_ui_pending) {
+        uint64_t now = typio_wl_monotonic_ms();
+        int timeout_ms = typio_wl_panel_coordinator_anchor_timeout_ms(frontend);
+        TypioWlPositionedUiPlan ui_plan =
+            typio_wl_positioned_ui_plan(
+                frontend->positioned_ui_pending,
+                typio_wl_panel_coordinator_anchor_ready(frontend),
+                frontend->positioned_ui_pending_since_ms,
+                now,
+                (uint64_t)timeout_ms);
+
+        if (ui_plan == TYPIO_WL_POSITIONED_UI_SHOW) {
+            if (frontend->positioned_ui_pending_owner ==
+                TYPIO_WL_UI_OWNER_INDICATOR) {
+                char label[TYPIO_POSITIONED_UI_LABEL_CAP];
+                snprintf(label, sizeof(label), "%s",
+                         frontend->positioned_ui_pending_label);
+                typio_wl_panel_coordinator_cancel_pending(frontend);
+                typio_wl_frontend_show_indicator(frontend, label);
+            } else {
+                typio_wl_panel_coordinator_flush_pending(frontend);
+            }
+        } else if (ui_plan == TYPIO_WL_POSITIONED_UI_CANCEL) {
+            TypioWlUiOwner owner = frontend->positioned_ui_pending_owner;
+            typio_wl_panel_coordinator_cancel_pending(frontend);
+            typio_wl_trace(frontend,
+                           "ui",
+                           "action=skip owner=%d reason=position_anchor_timeout timeout_ms=%u generation=%" PRIu64,
+                           owner,
+                           (unsigned)timeout_ms,
+                           frontend->position_anchor_generation);
+        }
     }
 
     if (!typio_wl_text_ui_should_flush_panel_update(
