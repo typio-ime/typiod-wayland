@@ -262,7 +262,7 @@ meson install -C build
 
 ## Project layout
 
-See [project-layout.md](project-layout.md) for a tour of the source tree.
+For a tour of the documentation structure, see [docs/index.md](../index.md).
 
 ## Submitting changes
 

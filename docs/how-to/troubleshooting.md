@@ -111,6 +111,23 @@ typio &
 
 The underlying leak is patched in the current source. Rebuilding and reinstalling eliminates it permanently.
 
+## Indicator Lingers After Switching tmux Panes or Windows
+
+**Symptom:** The engine/mode indicator stays visible for a moment after switching panes inside tmux, screen, or a similar terminal multiplexer running in a Wayland terminal emulator (foot, Alacritty, kitty, etc.).
+
+**Root cause:** Terminal emulators register the entire terminal window as one `zwp_input_method_v2` input area. Switching panes inside tmux is invisible to the compositor — no `activate`/`deactivate` events are produced — so the input method cannot detect the context change. The indicator relies on its auto-hide timer to dismiss itself.
+
+**Workaround:** Lower the indicator display duration:
+
+```toml
+[display]
+indicator_duration_ms = 800
+```
+
+The value is clamped to 100–10000 ms. Lower values make the indicator vanish sooner in all contexts, including those where a longer display is useful.
+
+For the technical background see [Wayland Input Method Protocol — Known limits: terminal multiplexers](../explanation/wayland-input-method.md#known-limits-terminal-multiplexers).
+
 ## Debug Logging
 
 ```bash

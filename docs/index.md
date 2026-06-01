@@ -8,12 +8,13 @@ The Linux/Wayland host for the [Typio](../typio) input method framework. This re
   - [How to Package for Distribution](how-to/package-for-distribution.md)
   - [Troubleshooting](how-to/troubleshooting.md)
 - **[Reference](reference/)** — Lookup-oriented API, config, and protocol documentation.
+  - [Glossary](reference/glossary.md) — Canonical project terms with definitions and sources
   - [IPC Protocol Reference](reference/ipc-protocol.md) — TIP v1 (UDS + JSON-RPC)
   - [Configuration Reference](reference/configuration.md) — `core.toml` and `wayland.toml` keys, reload behaviour, and file structure
   - [Engine Discovery Reference](reference/engine-discovery.md) — search path, file-name rules, icons
 - **[Explanation](explanation/)** — Understanding-oriented design documents.
   - [Wayland Input Method Protocol](explanation/wayland-input-method.md)
-  - [Panel Ontology](explanation/panel-ontology.md)
+  - [Panel Architecture](explanation/panel-architecture.md)
   - [Frontend Graphics](explanation/frontend-graphics.md)
   - [Timing Model](explanation/timing-model.md)
   - [Lifecycle Resilience and Recovery](explanation/lifecycle-resilience.md)

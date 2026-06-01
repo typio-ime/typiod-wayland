@@ -3,7 +3,7 @@
 This document defines where UI and rendering code belongs. It is a contributor
 standard, not a rendering deep dive. For the drawing pipeline, see
 [Frontend Graphics](../explanation/frontend-graphics.md). For Panel vocabulary,
-see [Panel Ontology](../explanation/panel-ontology.md).
+see [Panel Architecture](../explanation/panel-architecture.md).
 
 ## The rule
 

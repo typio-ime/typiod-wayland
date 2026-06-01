@@ -1,29 +1,14 @@
-# Panel Ontology
+# Panel Architecture
 
 Typio has one floating IME UI: the **Panel**. It may look like several
 different things during use — candidate list, engine/profile indicator, voice
 recording status — but those are different **owners** of the same Panel, not
 different windows.
 
-This document names the concepts around that UI and explains how they relate.
-It complements [Frontend Graphics](frontend-graphics.md), which explains how
-the Panel is drawn, and ADR-0014 / ADR-0017, which record the naming and
-arbitration decisions. Terminology follows ADR-0014: **Panel** is the UI;
-**input-popup surface** is the Wayland protocol role.
-
-## The core ontology
-
-| Concept | Meaning | Code home |
-|---|---|---|
-| **Panel** | The single floating IME UI surface. It can show candidates, indicator text, or voice status. | `src/ui/panel/panel.c` |
-| **Panel Surface** | The Wayland/Vulkan presentation object behind the Panel. It owns the input-popup `wl_surface`, swapchain, present/recover loop, scale, and output tracking. | `src/ui/panel/surface.c` |
-| **Panel Content** | Display-agnostic data describing what to show. It has no Wayland or GPU types. | `src/ui/panel/content.h` |
-| **Zone** | A bounded area inside Panel content, such as Candidate, Preedit, Status, or future Toolbar. | `src/ui/panel/content.h`, `layout.c` |
-| **Panel Producer** | A frontend subsystem that requests Panel content. Current producers are candidate composition, indicator, and voice. | `src/frontend/*` |
-| **UI Owner** | The producer currently allowed to control Panel visibility. | `src/frontend/panel_coordinator.c` |
-| **Panel Coordinator** | Frontend policy layer that arbitrates owners, pending positioned UI, and anchor readiness. It is not renderer code. | `src/frontend/panel_coordinator.c` |
-| **Position Anchor** | The current activation's trusted placement state for the input-popup surface. | `src/frontend/panel_coordinator.c` |
-| **Anchor Probe** | A one-shot no-op input-method commit used to ask clients such as browsers for a fresh caret rectangle. | `src/frontend/panel_coordinator.c` |
+This document explains how the Panel system is structured: layer boundaries,
+ownership arbitration, and position-anchor mechanics. Term definitions live in
+the [Glossary](../reference/glossary.md); naming decisions are recorded in
+[ADR-0014](../adr/0014-canonical-panel-vocabulary.md) and [ADR-0017](../adr/0017-positioned-ui-arbitration.md).
 
 ## Layer boundaries
 
@@ -138,21 +123,6 @@ flowchart TD
 The important split is that producer arbitration happens before rendering.
 Rendering is downstream and should not contain ownership policy.
 
-## Vocabulary to use in code and docs
-
-Use these terms consistently:
-
-| Prefer | Avoid | Reason |
-|---|---|---|
-| Panel | popup, candidate popup | Panel is the UI; popup is only the Wayland role. |
-| input-popup surface | popup surface, window | Names the protocol role precisely. |
-| Panel Producer | UI source, caller | Producer states who requests content. |
-| UI Owner | active UI, current status | Owner explains visibility authority. |
-| Panel Coordinator | UI manager, frontend UI | Coordinator describes arbitration without implying rendering. |
-| Position Anchor | popup position, cursor position | Anchor is the trustworthy placement state, not raw coordinates. |
-| Anchor Readiness | fresh rect, valid position | Readiness describes whether the current activation can be trusted. |
-| Anchor Probe | refresh hack, browser workaround | Probe describes the explicit no-op commit mechanism. |
-
 ## Design rules
 
 1. Do not let producers call `TypioPanel` directly. Route through the Panel
@@ -165,7 +135,8 @@ Use these terms consistently:
 
 ## See also
 
-- [Frontend Graphics](frontend-graphics.md)
+- [Glossary](../reference/glossary.md) — term definitions
+- [Frontend Graphics](frontend-graphics.md) — render pipeline
 - [Wayland Input Method Protocol](wayland-input-method.md)
 - [ADR-0014: Canonical panel vocabulary and module ontology](../adr/0014-canonical-panel-vocabulary.md)
 - [ADR-0017: Positioned UI arbitration for panel owners](../adr/0017-positioned-ui-arbitration.md)

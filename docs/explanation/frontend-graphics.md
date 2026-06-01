@@ -186,7 +186,7 @@ it.
 ## See also
 
 - [ADR-0005 — Unified Panel Backend](../adr/0005-unified-panel-backend.md) — the GPU-free content model.
-- [Panel Ontology](panel-ontology.md) — the producer / owner / anchor vocabulary around the Panel.
+- [Panel Architecture](panel-architecture.md) — layer boundaries, owner arbitration, anchors
 - [ADR-0006](../adr/0006-resilient-candidate-popup-present.md) / [ADR-0010](../adr/0010-non-blocking-candidate-popup-present.md) — present-side resilience (orthogonal to the pipeline).
 - [ADR-0011 — Colour-Independent Coverage Glyphs](../adr/0011-colour-independent-coverage-glyphs.md) — why shapes carry no colour.
 - [ADR-0012 — Glyph Atlas Shared Texture](../adr/0012-glyph-atlas-shared-texture.md) / [ADR-0013](../adr/0013-grow-only-popup-swapchain.md) — backend-internal optimisations.
