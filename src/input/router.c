@@ -35,10 +35,6 @@
 #include <stdio.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
-static bool key_route_is_shift_keysym(uint32_t keysym) {
-    return keysym == XKB_KEY_Shift_L || keysym == XKB_KEY_Shift_R;
-}
-
 static bool key_route_is_printable_text_unicode(uint32_t unicode) {
     return unicode >= 0x20 && unicode != 0x7F;
 }
@@ -487,27 +483,6 @@ void typio_wl_key_route_process_press(TypioWlKeyboard *keyboard,
         bool is_modifier = typio_key_event_is_modifier_only(&event);
         bool handled = typio_input_context_process_key(session->ctx, &event);
 
-        if (keysym == 0x7e && (modifiers & (TYPIO_MOD_CTRL | TYPIO_MOD_SHIFT))) {
-            typio_log_info("grave diagnostic: handled=%s keysym=0x%x base=0x%x mods=0x%x phys=0x%x",
-                      handled ? "yes" : "no",
-                      keysym, event.base_keysym,
-                      modifiers, keyboard->physical_modifiers);
-        }
-
-        if (is_modifier && key_route_is_shift_keysym(keysym)) {
-            TypioRegistry *registry =
-                typio_instance_get_registry(frontend->instance);
-            char *active_engine_name = registry
-                ? typio_registry_get_active_keyboard(registry) : nullptr;
-            typio_log_debug("Shift press diagnostic: handled=%s engine=%s mods=0x%x phys=0x%x xkb=0x%x",
-                      handled ? "yes" : "no",
-                      active_engine_name ? active_engine_name : "(none)",
-                      modifiers,
-                      keyboard->physical_modifiers,
-                      typio_wl_xkb_effective_modifiers(keyboard));
-            typio_free_string(active_engine_name);
-        }
-
         if (!handled &&
             typio_wl_candidate_guard_should_consume(session, keysym)) {
             decision = key_route_decision(TYPIO_WL_KEY_ACTION_CONSUME,
@@ -716,20 +691,6 @@ void typio_wl_key_route_process_release(TypioWlKeyboard *keyboard,
                 .base_keysym = typio_wl_keyboard_base_keysym(keyboard, key),
             };
             bool handled = typio_input_context_process_key(session->ctx, &ev);
-            if (typio_key_event_is_modifier_only(&ev) &&
-                key_route_is_shift_keysym(keysym)) {
-                TypioRegistry *registry =
-                    typio_instance_get_registry(frontend->instance);
-                char *active_engine_name = registry
-                    ? typio_registry_get_active_keyboard(registry) : nullptr;
-                typio_log_debug("Shift release diagnostic: handled=%s engine=%s mods=0x%x phys=0x%x xkb=0x%x",
-                          handled ? "yes" : "no",
-                          active_engine_name ? active_engine_name : "(none)",
-                          modifiers,
-                          keyboard->physical_modifiers,
-                          typio_wl_xkb_effective_modifiers(keyboard));
-                typio_free_string(active_engine_name);
-            }
             if (!handled &&
                 typio_wl_candidate_guard_should_consume(session, keysym)) {
                 decision = key_route_decision(
@@ -757,20 +718,6 @@ void typio_wl_key_route_process_release(TypioWlKeyboard *keyboard,
             .base_keysym = typio_wl_keyboard_base_keysym(keyboard, key),
         };
         bool handled = typio_input_context_process_key(session->ctx, &event);
-        if (typio_key_event_is_modifier_only(&event) &&
-            key_route_is_shift_keysym(keysym)) {
-            TypioRegistry *registry =
-                typio_instance_get_registry(frontend->instance);
-            char *active_engine_name = registry
-                ? typio_registry_get_active_keyboard(registry) : nullptr;
-            typio_log_debug("Shift release diagnostic: handled=%s engine=%s mods=0x%x phys=0x%x xkb=0x%x",
-                      handled ? "yes" : "no",
-                      active_engine_name ? active_engine_name : "(none)",
-                      modifiers,
-                      keyboard->physical_modifiers,
-                      typio_wl_xkb_effective_modifiers(keyboard));
-            typio_free_string(active_engine_name);
-        }
         if (!handled &&
             typio_wl_candidate_guard_should_consume(session, keysym)) {
             decision = key_route_decision(TYPIO_WL_KEY_ACTION_CONSUME,
