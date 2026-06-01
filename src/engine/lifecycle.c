@@ -15,64 +15,9 @@
 
 #include <inttypes.h>
 
-const char *typio_wl_lifecycle_phase_name(TypioWlLifecyclePhase phase) {
-    switch (phase) {
-    case TYPIO_WL_PHASE_INACTIVE:     return "INACTIVE";
-    case TYPIO_WL_PHASE_ACTIVATING:   return "ACTIVATING";
-    case TYPIO_WL_PHASE_ACTIVE:       return "ACTIVE";
-    case TYPIO_WL_PHASE_DEACTIVATING: return "DEACTIVATING";
-    }
-    return "UNKNOWN";
-}
-
-bool typio_wl_lifecycle_transition_is_valid(TypioWlLifecyclePhase from,
-                                            TypioWlLifecyclePhase to) {
-    if (from == to)
-        return true;
-    switch (from) {
-    case TYPIO_WL_PHASE_INACTIVE:
-        return to == TYPIO_WL_PHASE_ACTIVATING;
-    case TYPIO_WL_PHASE_ACTIVATING:
-        return to == TYPIO_WL_PHASE_ACTIVE ||
-               to == TYPIO_WL_PHASE_DEACTIVATING;
-    case TYPIO_WL_PHASE_ACTIVE:
-        return to == TYPIO_WL_PHASE_DEACTIVATING;
-    case TYPIO_WL_PHASE_DEACTIVATING:
-        return to == TYPIO_WL_PHASE_INACTIVE ||
-               to == TYPIO_WL_PHASE_ACTIVATING;
-    }
-    return false;
-}
-
-bool typio_wl_lifecycle_phase_allows_key_events(TypioWlLifecyclePhase phase) {
-    return phase == TYPIO_WL_PHASE_ACTIVE;
-}
-
-bool typio_wl_lifecycle_phase_allows_modifier_events(TypioWlLifecyclePhase phase) {
-    return phase == TYPIO_WL_PHASE_ACTIVE ||
-           phase == TYPIO_WL_PHASE_ACTIVATING;
-}
-
-bool typio_wl_lifecycle_should_defer_activate(TypioWlLifecyclePhase phase) {
-    return phase == TYPIO_WL_PHASE_DEACTIVATING;
-}
-
-bool typio_wl_lifecycle_should_cleanup_on_done(bool was_active, bool now_active) {
-    /* Drop preedit and focus state when the compositor reports the input
-     * method is no longer active for the surface — but only if we were
-     * active before, otherwise there is nothing to clean up. */
-    return was_active && !now_active;
-}
-
-bool typio_wl_lifecycle_should_commit_reactivation(bool pending_reactivation,
-                                                   bool was_active,
-                                                   bool now_active) {
-    /* A pending reactivation should commit when we observe the inactive
-     * boundary and the engine has reasserted its desire to be active. */
-    if (!pending_reactivation)
-        return false;
-    return !was_active && now_active;
-}
+/* The pure lifecycle decision functions (phase_name, transition_is_valid,
+ * phase_allows_*, classify_done) live in lifecycle_policy.c so they can be
+ * unit-tested without this file's frontend/grab/vk dependencies. */
 
 const char *typio_wl_conn_state_name(TypioWlConnState state) {
     switch (state) {
@@ -284,7 +229,7 @@ void typio_wl_lifecycle_on_resume(TypioWlFrontend *frontend,
         typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_INACTIVE,
                                      "resume scrub");
     }
-    frontend->pending_reactivation = false;
+    frontend->activate_seen = false;
 }
 
 TypioWlLifecycleState

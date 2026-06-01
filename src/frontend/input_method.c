@@ -152,12 +152,6 @@ static bool session_is_focused(TypioWlFrontend *frontend) {
            typio_input_context_is_focused(frontend->session->ctx);
 }
 
-static void set_pending_reactivation(TypioWlFrontend *frontend, bool pending) {
-    if (frontend) {
-        frontend->pending_reactivation = pending;
-    }
-}
-
 static bool frontend_has_non_routable_grab(TypioWlFrontend *frontend,
                                            bool now_active) {
     if (!frontend || !frontend->keyboard) {
@@ -203,12 +197,12 @@ static void trace_session_state(TypioWlFrontend *frontend, const char *event) {
 
     typio_wl_trace(frontend,
                    "im_state",
-                   "event=%s phase=%s focused=%s pending_active=%s pending_reactivation=%s session=%s keyboard=%s serial=%u",
+                   "event=%s phase=%s focused=%s pending_active=%s activate_seen=%s session=%s keyboard=%s serial=%u",
                    event ? event : "unknown",
                    typio_wl_lifecycle_phase_name(frontend->lifecycle_phase),
                    focused ? "yes" : "no",
                    pending_active ? "yes" : "no",
-                   frontend->pending_reactivation ? "yes" : "no",
+                   frontend->activate_seen ? "yes" : "no",
                    frontend->session ? "yes" : "no",
                    frontend->keyboard ? "yes" : "no",
                    serial);
@@ -413,18 +407,19 @@ static void im_handle_activate(void *data, [[maybe_unused]] struct zwp_input_met
         }
     }
 
-    if (!typio_wl_lifecycle_should_defer_activate(session_is_focused(frontend))) {
-        set_pending_reactivation(frontend, false);
-        typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_ACTIVATING,
-                                     "activate event");
-    } else {
-        set_pending_reactivation(frontend, true);
-        typio_wl_trace(frontend,
-                       "lifecycle",
-                       "action=defer_reactivation phase=%s reason=%s",
-                       typio_wl_lifecycle_phase_name(frontend->lifecycle_phase),
-                       "activate while already focused");
-    }
+    /* A (re)activation supersedes any positioned indicator from the prior
+     * activation. Hide it now so it never lingers — or worse, gets repositioned
+     * by the compositor onto the new text field's caret. Only the INDICATOR
+     * owner is affected; a live candidate panel is left untouched. The matching
+     * re-reveal happens in transition_to_active / transition_to_refocus. */
+    typio_wl_frontend_hide_indicator(frontend);
+
+    /* Record that an activate arrived in this batch. The next `done` consumes
+     * this to tell a genuine (re)activation apart from a plain text-state
+     * update done (which must not rebuild focus state mid-composition). */
+    frontend->activate_seen = true;
+    typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_ACTIVATING,
+                                 "activate event");
 
     /* Reset session state for new activation */
     typio_wl_session_reset(frontend->session);
@@ -437,12 +432,7 @@ static void im_handle_deactivate(void *data, [[maybe_unused]] struct zwp_input_m
 
     typio_wl_trace(frontend, "im", "event=deactivate");
     trace_session_state(frontend, "deactivate_begin");
-    set_pending_reactivation(frontend, false);
     typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_DEACTIVATING, "deactivate event");
-    typio_wl_trace(frontend,
-                   "lifecycle",
-                   "action=defer_hard_reset reason=deactivate event phase=%s",
-                   typio_wl_lifecycle_phase_name(frontend->lifecycle_phase));
 
     if (frontend->session) {
         frontend->session->pending.active = false;
@@ -506,7 +496,6 @@ static void transition_to_active(TypioWlFrontend *frontend) {
         typio_log_warning("No active engine, skipping keyboard grab");
         typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_ACTIVE,
                                      "focus in without active engine");
-        set_pending_reactivation(frontend, false);
         return;
     }
 
@@ -515,17 +504,15 @@ static void transition_to_active(TypioWlFrontend *frontend) {
                                "Failed to create keyboard grab on activation")) {
         typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_INACTIVE,
                                      "focus in keyboard create failed");
-        set_pending_reactivation(frontend, false);
         return;
     }
 
     typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_ACTIVE, "focus in complete");
-    set_pending_reactivation(frontend, false);
     typio_wl_panel_coordinator_reset_anchor(frontend);
 
     {
-        const TypioEngineStatus *mode =
-            typio_instance_get_last_status(frontend->instance);
+        const TypioKeyboardEngineStatus *mode =
+            typio_instance_get_last_keyboard_status(frontend->instance);
         if (mode && mode->display_label && mode->display_label[0]) {
             typio_wl_frontend_show_indicator_on_focus(frontend, mode);
         }
@@ -534,35 +521,28 @@ static void transition_to_active(TypioWlFrontend *frontend) {
     trace_session_state(frontend, "done_focus_in_complete");
 }
 
-static void handle_reactivation(TypioWlFrontend *frontend) {
-    typio_wl_trace(frontend,
-                   "lifecycle",
-                   "action=commit_reactivation reason=done event");
+static void transition_to_refocus(TypioWlFrontend *frontend) {
+    /* Re-activated while staying focused: the compositor moved us to a
+     * (possibly different) text field without an intervening deactivate. The
+     * keyboard grab and the engine's input context persist for the same
+     * input-method, so they are left intact — we only settle the phase back to
+     * ACTIVE, re-anchor to the new caret, and re-evaluate the on-focus
+     * indicator (gated by salience + recency inside show_indicator_on_focus). */
+    typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_ACTIVE, "refocus complete");
+    typio_wl_panel_coordinator_reset_anchor(frontend);
 
-    if (!has_active_engine(frontend)) {
-        typio_log_warning("No active engine, skipping keyboard reactivation");
-        set_pending_reactivation(frontend, false);
-        return;
+    const TypioKeyboardEngineStatus *mode =
+        typio_instance_get_last_keyboard_status(frontend->instance);
+    if (mode && mode->display_label && mode->display_label[0]) {
+        typio_wl_frontend_show_indicator_on_focus(frontend, mode);
     }
-
-    if (!rebuild_keyboard_grab(frontend,
-                               "reactivation done",
-                               "Failed to recreate keyboard grab on reactivation")) {
-        typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_INACTIVE,
-                                     "reactivation keyboard create failed");
-        set_pending_reactivation(frontend, false);
-        return;
-    }
-
-    typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_ACTIVE,
-                                 "reactivation complete");
-    set_pending_reactivation(frontend, false);
-    trace_session_state(frontend, "done_reactivation_complete");
+    trace_session_state(frontend, "done_refocus_complete");
 }
 
 static void transition_to_inactive(TypioWlFrontend *frontend, const char *reason) {
     typio_log_info("Input context unfocused");
     typio_wl_panel_coordinator_reset_anchor(frontend);
+    typio_wl_panel_coordinator_clear_caret_rect(frontend);
     typio_wl_text_ui_reset_tracking(&frontend->panel_update_pending,
                                     &frontend->session->last_preedit_text,
                                     &frontend->session->last_preedit_cursor);
@@ -573,7 +553,6 @@ static void transition_to_inactive(TypioWlFrontend *frontend, const char *reason
     typio_wl_lifecycle_hard_reset_keyboard(frontend, reason);
     typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_INACTIVE, "focus out complete");
     typio_wl_frontend_clear_identity(frontend);
-    set_pending_reactivation(frontend, false);
     trace_session_state(frontend, "done_focus_out_complete");
 }
 
@@ -627,50 +606,57 @@ void typio_wl_input_method_handle_resume(TypioWlFrontend *frontend,
 
 static void im_handle_done(void *data, [[maybe_unused]] struct zwp_input_method_v2 *im) {
     TypioWlFrontend *frontend = data;
-    bool needs_reactivation;
 
     frontend->im_serial++;
 
     if (!frontend->session) {
         typio_log_warning("Received done event without session (serial=%u)",
                   frontend->im_serial);
+        frontend->activate_seen = false;
         return;
     }
 
     trace_session_state(frontend, "done_begin");
     bool was_active = session_is_focused(frontend);
     bool now_active = frontend->session->pending.active;
-    bool needs_cleanup = typio_wl_lifecycle_should_cleanup_on_done(was_active,
-                                                                   now_active);
-    needs_reactivation = typio_wl_lifecycle_should_commit_reactivation(
-        frontend->pending_reactivation, was_active, now_active);
+    bool activate_seen = frontend->activate_seen;
+    frontend->activate_seen = false;
+
+    TypioWlDoneAction action =
+        typio_wl_lifecycle_classify_done(was_active, now_active, activate_seen);
 
     typio_wl_trace(frontend,
                    "im_done",
-                   "was_active=%s now_active=%s needs_reactivation=%s phase=%s",
+                   "was_active=%s now_active=%s activate_seen=%s action=%d phase=%s",
                    was_active ? "yes" : "no",
                    now_active ? "yes" : "no",
-                   needs_reactivation ? "yes" : "no",
+                   activate_seen ? "yes" : "no",
+                   (int)action,
                    typio_wl_lifecycle_phase_name(frontend->lifecycle_phase));
 
     /* Apply pending state */
     typio_wl_session_apply_pending(frontend->session);
 
-    /* Handle focus changes */
-    if (now_active && !was_active) {
+    switch (action) {
+    case TYPIO_WL_DONE_FOCUS_IN:
         transition_to_active(frontend);
-    } else if (needs_reactivation) {
-        handle_reactivation(frontend);
-    } else if (needs_cleanup) {
+        break;
+    case TYPIO_WL_DONE_REFOCUS:
+        transition_to_refocus(frontend);
+        break;
+    case TYPIO_WL_DONE_FOCUS_OUT:
         transition_to_inactive(frontend, "focus out");
-    } else {
+        break;
+    case TYPIO_WL_DONE_NONE:
+        /* A `done` with no focus change — typically a text-state update. Guard
+         * against a keyboard grab that is somehow still active in a state that
+         * cannot route keys, and recover it. */
         if (frontend_has_non_routable_grab(frontend, now_active)) {
-            typio_log_warning("Done completed without focus transition, but keyboard grab is still active in a non-routable state: phase=%s was_active=%s now_active=%s focused=%s pending_reactivation=%s",
+            typio_log_warning("Done without focus transition but keyboard grab is non-routable: phase=%s was_active=%s now_active=%s focused=%s",
                       typio_wl_lifecycle_phase_name(frontend->lifecycle_phase),
                       was_active ? "yes" : "no",
                       now_active ? "yes" : "no",
-                      session_is_focused(frontend) ? "yes" : "no",
-                      frontend->pending_reactivation ? "yes" : "no");
+                      session_is_focused(frontend) ? "yes" : "no");
             if (!now_active || !session_is_focused(frontend)) {
                 typio_log_warning("Recovering from stale non-routable keyboard grab after done without transition");
                 typio_wl_lifecycle_hard_reset_keyboard(
@@ -680,6 +666,7 @@ static void im_handle_done(void *data, [[maybe_unused]] struct zwp_input_method_
             }
         }
         trace_session_state(frontend, "done_no_transition");
+        break;
     }
 }
 
@@ -704,8 +691,6 @@ static void on_commit_callback([[maybe_unused]] TypioInputContext *ctx, const ch
     }
 
     typio_log_debug("Commit: %s", text);
-
-    typio_wl_frontend_record_commit(session->frontend);
 
     /* Clear preedit first */
     typio_wl_set_preedit(session->frontend, "", -1, -1);

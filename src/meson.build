@@ -53,6 +53,7 @@ if enable_wayland
         'input/router.c',
         'input/repeat.c',
         'engine/lifecycle.c',
+        'engine/lifecycle_policy.c',
         'input/modifiers.c',
         'frontend/event_loop.c',
         'frontend/panel_coordinator.c',

@@ -265,7 +265,7 @@ static void tray_refresh_tooltip(TypioTray *tray, TypioStateController *ctrl) {
         typio_state_controller_get_active_engine_display_name(ctrl);
     const char *voice =
         typio_state_controller_get_active_voice_engine_display_name(ctrl);
-    const TypioEngineStatus *mode =
+    const TypioKeyboardEngineStatus *mode =
         typio_state_controller_get_current_status(ctrl);
     const char *profile = (mode && mode->profile_label && mode->profile_label[0])
                           ? mode->profile_label : nullptr;
@@ -317,7 +317,7 @@ static void tray_state_change_callback(void *user_data,
             break;
         }
         case TYPIO_STATE_CHANGE_STATUS: {
-            const TypioEngineStatus *mode =
+            const TypioKeyboardEngineStatus *mode =
                 typio_state_controller_get_current_status(ctrl);
             if (mode && mode->icon_name) {
                 typio_tray_set_icon(tray, mode->icon_name);

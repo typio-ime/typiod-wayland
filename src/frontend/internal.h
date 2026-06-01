@@ -297,7 +297,9 @@ struct TypioWlFrontend {
     /* Event loop state */
     volatile bool running;
     TypioWlLifecyclePhase lifecycle_phase;
-    bool pending_reactivation;
+    /* Set when an input-method `activate` arrives; consumed and cleared by the
+     * next `done` to tell a genuine (re)activation from a text-state update. */
+    bool activate_seen;
 
     /* Reconciler: monotonic timestamp when the declared phase first
      * diverged from observed reality, or 0 when they agree. The reconciler
@@ -313,10 +315,17 @@ struct TypioWlFrontend {
 
     int indicator_timer_fd;
     bool indicator_active;
-    uint64_t last_commit_ms;
+    uint64_t last_key_activity_ms;
+    uint64_t last_indicator_ms;
     uint64_t position_anchor_generation;
     uint64_t position_anchor_ready_generation;
     uint64_t position_anchor_probe_generation;
+    /* The compositor has positioned our popup at a caret for the current focus
+     * (text_input_rectangle received). Survives anchor-generation resets; only
+     * cleared on focus-out. Lets out-of-band UI fall back to the cached caret
+     * rect when an anchor probe times out (terminals do not re-emit the rect on
+     * the no-op probe commit, unlike browsers). */
+    bool position_anchor_has_caret;
 
     #define TYPIO_POSITIONED_UI_LABEL_CAP 256
     bool positioned_ui_pending;
@@ -374,15 +383,21 @@ void typio_wl_panel_coordinator_reset_anchor(TypioWlFrontend *frontend);
 void typio_wl_panel_coordinator_mark_anchor_ready(TypioWlFrontend *frontend,
                                                    const char *reason);
 bool typio_wl_panel_coordinator_anchor_ready(const TypioWlFrontend *frontend);
+/* Record that the compositor delivered a caret rectangle for the current focus
+ * (sets position_anchor_has_caret). Called from the input-popup surface. */
+void typio_wl_panel_coordinator_note_caret_rect(TypioWlFrontend *frontend);
+/* Clear the cached-caret state on focus-out so a later focus cannot reuse a
+ * stale position. */
+void typio_wl_panel_coordinator_clear_caret_rect(TypioWlFrontend *frontend);
 
 bool typio_wl_frontend_init_indicator(TypioWlFrontend *frontend);
 void typio_wl_frontend_show_indicator(TypioWlFrontend *frontend,
                                        const char *text);
 void typio_wl_frontend_show_indicator_for_state(TypioWlFrontend *frontend,
-                                                 const TypioEngineStatus *mode);
+                                                 const TypioKeyboardEngineStatus *mode);
 void typio_wl_frontend_show_indicator_on_focus(TypioWlFrontend *frontend,
-                                                const TypioEngineStatus *mode);
-void typio_wl_frontend_record_commit(TypioWlFrontend *frontend);
+                                                const TypioKeyboardEngineStatus *mode);
+void typio_wl_frontend_record_key_activity(TypioWlFrontend *frontend);
 void typio_wl_frontend_hide_indicator(TypioWlFrontend *frontend);
 int typio_wl_frontend_get_indicator_fd(TypioWlFrontend *frontend);
 void typio_wl_frontend_dispatch_indicator_timer(TypioWlFrontend *frontend);

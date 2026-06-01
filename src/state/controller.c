@@ -27,7 +27,7 @@ struct TypioStateController {
     bool engine_active;
 
     bool has_status;
-    TypioEngineStatus status;
+    TypioKeyboardEngineStatus status;
     char *status_profile_id;
     char *status_profile_label;
     char *status_display_label;
@@ -89,7 +89,7 @@ static void typio_state_controller_clear_mode(TypioStateController *ctrl) {
 }
 
 static void typio_state_controller_set_mode(TypioStateController *ctrl,
-                                            const TypioEngineStatus *mode) {
+                                            const TypioKeyboardEngineStatus *mode) {
     typio_state_controller_clear_mode(ctrl);
     if (!mode) {
         return;
@@ -217,7 +217,7 @@ bool typio_state_controller_get_engine_active(
     return ctrl ? ctrl->engine_active : false;
 }
 
-const TypioEngineStatus *typio_state_controller_get_current_status(
+const TypioKeyboardEngineStatus *typio_state_controller_get_current_status(
     TypioStateController *ctrl) {
     if (!ctrl || !ctrl->has_status) {
         return nullptr;
@@ -303,7 +303,7 @@ void typio_state_controller_notify_voice_engine_changed(
 
 void typio_state_controller_notify_status_changed(
     TypioStateController *ctrl,
-    const TypioEngineStatus *mode) {
+    const TypioKeyboardEngineStatus *mode) {
     if (!ctrl) {
         return;
     }

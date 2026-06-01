@@ -374,10 +374,15 @@ static void on_key(void *data,
             keyboard->physical_modifiers &= ~(uint32_t)TYPIO_MOD_SUPER;
     }
 
-    if (state == WL_KEYBOARD_KEY_STATE_PRESSED)
+    if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+        /* Record effective-input recency: this press passed the guard and is
+         * being dispatched to the engine (composing, shortcut, commit, nav…).
+         * The indicator's on-focus suppression keys off this — "I was just
+         * typing" — so it stays quiet on an incidental refocus. */
+        typio_wl_frontend_record_key_activity(frontend);
         typio_wl_key_arbiter_press(&keyboard->arbiter, keyboard, frontend->session,
                                    key, keysym, modifiers, unicode, time);
-    else
+    } else
         typio_wl_key_arbiter_release(
             &keyboard->arbiter, keyboard, frontend->session,
             key, keysym, modifiers, unicode, time);

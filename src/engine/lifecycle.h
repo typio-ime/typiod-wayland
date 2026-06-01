@@ -33,15 +33,25 @@ bool typio_wl_lifecycle_transition_is_valid(TypioWlLifecyclePhase from,
                                             TypioWlLifecyclePhase to);
 bool typio_wl_lifecycle_phase_allows_key_events(TypioWlLifecyclePhase phase);
 bool typio_wl_lifecycle_phase_allows_modifier_events(TypioWlLifecyclePhase phase);
-bool typio_wl_lifecycle_should_defer_activate(TypioWlLifecyclePhase phase);
-/** Whether a `done` event that observes was_active → now_active should
- *  trigger the active-context cleanup path (focus drop, preedit clear). */
-bool typio_wl_lifecycle_should_cleanup_on_done(bool was_active, bool now_active);
-/** Whether a `done` event under @p pending_reactivation should commit the
- *  pending reactivation (refresh focus + grab) given the active transition. */
-bool typio_wl_lifecycle_should_commit_reactivation(bool pending_reactivation,
-                                                   bool was_active,
-                                                   bool now_active);
+/**
+ * @brief How a compositor `done` should change focus, derived purely from the
+ *        focus edges plus whether an `activate` arrived in the same batch.
+ *
+ * @p activate_seen distinguishes a genuine (re)activation from a plain
+ * text-state update `done` (surrounding text, content type), which the
+ * compositor also delivers while focus is unchanged — those must not rebuild
+ * focus state mid-composition.
+ */
+typedef enum {
+    TYPIO_WL_DONE_NONE = 0,   /* No focus change (e.g. a text-state update). */
+    TYPIO_WL_DONE_FOCUS_IN,   /* Became focused: build grab, focus the engine. */
+    TYPIO_WL_DONE_FOCUS_OUT,  /* Lost focus: drop grab, clear preedit. */
+    TYPIO_WL_DONE_REFOCUS,    /* Re-activated while focused (new field): re-anchor. */
+} TypioWlDoneAction;
+
+TypioWlDoneAction typio_wl_lifecycle_classify_done(bool was_active,
+                                                   bool now_active,
+                                                   bool activate_seen);
 
 struct TypioWlFrontend;
 struct TypioWlKeyboard;

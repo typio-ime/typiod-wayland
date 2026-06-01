@@ -111,14 +111,14 @@ static char *build_engine_changed_payload(TypioInstance *inst)
 
 static char *build_status_changed_payload(TypioStateController *ctrl)
 {
-    const TypioEngineStatus *mode = ctrl
+    const TypioKeyboardEngineStatus *mode = ctrl
         ? typio_state_controller_get_current_status(ctrl) : NULL;
     TipJsonBuilder *b = tip_json_builder_new();
     TIP_JSON_OBJ_START(b);
     if (mode) {
         const char *engagement =
-            mode->engagement == TYPIO_ENGAGE_PASSTHROUGH ? "passthrough" :
-            mode->engagement == TYPIO_ENGAGE_OFF ? "off" : "active";
+            mode->engagement == TYPIO_KB_ENGAGE_PASSTHROUGH ? "passthrough" :
+            mode->engagement == TYPIO_KB_ENGAGE_OFF ? "off" : "active";
         TIP_JSON_KEY(b, "engagement");
         tip_json_builder_append_string(b, engagement);
         TIP_JSON_COMMA(b);

@@ -45,7 +45,20 @@ static void event_loop_flush_pending_panel(TypioWlFrontend *frontend) {
                 now,
                 (uint64_t)timeout_ms);
 
-        if (ui_plan == TYPIO_WL_POSITIONED_UI_SHOW) {
+        /* Probe timed out, but the compositor already positioned our popup at a
+         * caret for this focus: clients like terminals set the cursor rectangle
+         * once and do not re-emit it on the no-op probe commit, so the probe
+         * never yields a fresh rect — yet the cached position is valid. Trust it
+         * instead of dropping the UI. Browsers answer the probe before the
+         * timeout and take the plain SHOW path. */
+        bool caret_fallback = ui_plan == TYPIO_WL_POSITIONED_UI_CANCEL &&
+                              frontend->position_anchor_has_caret;
+
+        if (ui_plan == TYPIO_WL_POSITIONED_UI_SHOW || caret_fallback) {
+            if (caret_fallback) {
+                typio_wl_panel_coordinator_mark_anchor_ready(frontend,
+                                                             "caret_rect_fallback");
+            }
             if (frontend->positioned_ui_pending_owner ==
                 TYPIO_WL_UI_OWNER_INDICATOR) {
                 char label[TYPIO_POSITIONED_UI_LABEL_CAP];

@@ -14,7 +14,7 @@
 #include <stdio.h>
 
 #define TYPIO_INDICATOR_DEFAULT_DURATION_MS 1500
-#define TYPIO_INDICATOR_COMMIT_COOLDOWN_MS 8000
+#define TYPIO_INDICATOR_RECENT_INPUT_COOLDOWN_MS 3000
 
 static int indicator_duration_ms(TypioWlFrontend *frontend) {
     if (!frontend || !frontend->instance) {
@@ -82,7 +82,7 @@ static const char *mode_cache_lookup(TypioWlFrontend *frontend,
 
 static void mode_cache_update(TypioWlFrontend *frontend,
                                const char *engine_name,
-                               const TypioEngineStatus *mode) {
+                               const TypioKeyboardEngineStatus *mode) {
     if (!frontend || !engine_name || !mode) return;
 
     for (size_t i = 0; i < frontend->indicator_mode_cache_count; i++) {
@@ -106,7 +106,7 @@ static void mode_cache_update(TypioWlFrontend *frontend,
 }
 
 static bool build_indicator_label(TypioWlFrontend *frontend,
-                                  const TypioEngineStatus *mode,
+                                  const TypioKeyboardEngineStatus *mode,
                                   char *label,
                                   size_t label_size) {
     TypioRegistry *registry;
@@ -154,33 +154,55 @@ static bool build_indicator_label(TypioWlFrontend *frontend,
 }
 
 void typio_wl_frontend_show_indicator_for_state(TypioWlFrontend *frontend,
-                                                  const TypioEngineStatus *mode) {
+                                                  const TypioKeyboardEngineStatus *mode) {
     char label[TYPIO_POSITIONED_UI_LABEL_CAP];
 
     if (!frontend || !frontend->instance) return;
     if (!indicator_enabled(frontend)) return;
     if (!frontend->panel) return;
+
+    /* Deliberate-change path: a user-initiated engine switch, profile
+     * change, or engagement toggle always earns confirmation feedback,
+     * *regardless of salience*. The user just acted; give them the clearest
+     * signal. salience governs only the unprompted on-focus auto-display
+     * (see show_indicator_on_focus), not this path. */
     if (!build_indicator_label(frontend, mode, label, sizeof(label))) return;
 
     typio_wl_frontend_show_indicator(frontend, label);
 }
 
 void typio_wl_frontend_show_indicator_on_focus(TypioWlFrontend *frontend,
-                                                const TypioEngineStatus *mode) {
+                                                const TypioKeyboardEngineStatus *mode) {
     if (!frontend) return;
 
+    /* Salience gate — focus path only. salience guides exactly one decision:
+     * whether to *auto-reveal* a state on an incidental focus. A QUIET state
+     * (Latin/ascii passthrough, off) behaves like a plain keyboard, so landing
+     * in it should stay silent. Deliberate changes never reach here; they call
+     * show_indicator_for_state directly and always announce. */
+    if (mode && mode->salience == TYPIO_STATUS_SALIENCE_QUIET) return;
+
+    /* Acknowledged-recency suppression (focus path only). If the user recently
+     * engaged with this IME — by any effective keypress or shortcut (not only a
+     * commit), or by seeing the indicator — they already know the state, so an
+     * incidental refocus (the terminal click-to-focus case) should stay silent.
+     * Keying off the last *effective key* matches the user's "I was just typing
+     * a moment ago" intuition better than keying off commits alone. */
     uint64_t now = typio_wl_monotonic_ms();
-    if (frontend->last_commit_ms > 0 &&
-        now - frontend->last_commit_ms < TYPIO_INDICATOR_COMMIT_COOLDOWN_MS) {
+    uint64_t acknowledged = frontend->last_key_activity_ms > frontend->last_indicator_ms
+                          ? frontend->last_key_activity_ms
+                          : frontend->last_indicator_ms;
+    if (acknowledged > 0 &&
+        now - acknowledged < TYPIO_INDICATOR_RECENT_INPUT_COOLDOWN_MS) {
         return;
     }
 
     typio_wl_frontend_show_indicator_for_state(frontend, mode);
 }
 
-void typio_wl_frontend_record_commit(TypioWlFrontend *frontend) {
+void typio_wl_frontend_record_key_activity(TypioWlFrontend *frontend) {
     if (!frontend) return;
-    frontend->last_commit_ms = typio_wl_monotonic_ms();
+    frontend->last_key_activity_ms = typio_wl_monotonic_ms();
 }
 
 void typio_wl_frontend_show_indicator(TypioWlFrontend *frontend,
@@ -195,6 +217,7 @@ void typio_wl_frontend_show_indicator(TypioWlFrontend *frontend,
     if (typio_wl_panel_coordinator_show_status(frontend, TYPIO_WL_UI_OWNER_INDICATOR, text) &&
         anchor_ready) {
         frontend->indicator_active = true;
+        frontend->last_indicator_ms = typio_wl_monotonic_ms();
         arm_indicator_timer(frontend);
     }
 }

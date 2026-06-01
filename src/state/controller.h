@@ -73,7 +73,7 @@ const char *typio_state_controller_get_status_icon(
     TypioStateController *ctrl);
 bool typio_state_controller_get_engine_active(
     TypioStateController *ctrl);
-const TypioEngineStatus *typio_state_controller_get_current_status(
+const TypioKeyboardEngineStatus *typio_state_controller_get_current_status(
     TypioStateController *ctrl);
 
 /* -------------------------------------------------------------------------- */
@@ -88,7 +88,7 @@ void typio_state_controller_notify_voice_engine_changed(
     const TypioEngineInfo *info);
 void typio_state_controller_notify_status_changed(
     TypioStateController *ctrl,
-    const TypioEngineStatus *mode);
+    const TypioKeyboardEngineStatus *mode);
 void typio_state_controller_notify_status_icon_changed(
     TypioStateController *ctrl,
     const char *icon_name);

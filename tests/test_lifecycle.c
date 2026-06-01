@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static int tests_run = 0;
 static int tests_passed = 0;
@@ -33,8 +34,14 @@ static int tests_passed = 0;
     } while(0)
 
 TEST(names_are_stable) {
-    ASSERT(typio_wl_lifecycle_phase_name(TYPIO_WL_PHASE_INACTIVE)[0] == 'i');
-    ASSERT(typio_wl_lifecycle_phase_name(TYPIO_WL_PHASE_ACTIVE)[0] == 'a');
+    ASSERT(strcmp(typio_wl_lifecycle_phase_name(TYPIO_WL_PHASE_INACTIVE),
+                  "INACTIVE") == 0);
+    ASSERT(strcmp(typio_wl_lifecycle_phase_name(TYPIO_WL_PHASE_ACTIVATING),
+                  "ACTIVATING") == 0);
+    ASSERT(strcmp(typio_wl_lifecycle_phase_name(TYPIO_WL_PHASE_ACTIVE),
+                  "ACTIVE") == 0);
+    ASSERT(strcmp(typio_wl_lifecycle_phase_name(TYPIO_WL_PHASE_DEACTIVATING),
+                  "DEACTIVATING") == 0);
 }
 
 TEST(valid_transitions_follow_timing_model) {
@@ -46,6 +53,10 @@ TEST(valid_transitions_follow_timing_model) {
         TYPIO_WL_PHASE_ACTIVE, TYPIO_WL_PHASE_DEACTIVATING));
     ASSERT(typio_wl_lifecycle_transition_is_valid(
         TYPIO_WL_PHASE_DEACTIVATING, TYPIO_WL_PHASE_INACTIVE));
+    /* Re-activation: the compositor re-asserts focus on a new field while we
+     * are still ACTIVE, without an intervening deactivate. */
+    ASSERT(typio_wl_lifecycle_transition_is_valid(
+        TYPIO_WL_PHASE_ACTIVE, TYPIO_WL_PHASE_ACTIVATING));
 }
 
 TEST(rejects_unexpected_shortcuts_between_phases) {
@@ -77,23 +88,40 @@ TEST(activating_and_active_phases_allow_modifier_events) {
         TYPIO_WL_PHASE_DEACTIVATING));
 }
 
-TEST(defers_activate_only_for_already_focused_session) {
-    ASSERT(typio_wl_lifecycle_should_defer_activate(true));
-    ASSERT(!typio_wl_lifecycle_should_defer_activate(false));
+/* classify_done(was_active, now_active, activate_seen) is the single source of
+ * truth for how a compositor `done` changes focus. Cover the full truth table. */
+TEST(classify_done_focus_in_on_inactive_to_active) {
+    /* Becoming active is FOCUS_IN regardless of whether the activate edge was
+     * recorded (it always is, but the classification must not depend on it). */
+    ASSERT(typio_wl_lifecycle_classify_done(false, true, true) ==
+           TYPIO_WL_DONE_FOCUS_IN);
+    ASSERT(typio_wl_lifecycle_classify_done(false, true, false) ==
+           TYPIO_WL_DONE_FOCUS_IN);
 }
 
-TEST(cleans_up_deactivation_only_at_done_boundary) {
-    ASSERT(typio_wl_lifecycle_should_cleanup_on_done(true, false));
-    ASSERT(!typio_wl_lifecycle_should_cleanup_on_done(true, true));
-    ASSERT(!typio_wl_lifecycle_should_cleanup_on_done(false, false));
-    ASSERT(!typio_wl_lifecycle_should_cleanup_on_done(false, true));
+TEST(classify_done_focus_out_on_active_to_inactive) {
+    ASSERT(typio_wl_lifecycle_classify_done(true, false, true) ==
+           TYPIO_WL_DONE_FOCUS_OUT);
+    ASSERT(typio_wl_lifecycle_classify_done(true, false, false) ==
+           TYPIO_WL_DONE_FOCUS_OUT);
 }
 
-TEST(commits_reactivation_only_for_active_to_active_done_boundary) {
-    ASSERT(typio_wl_lifecycle_should_commit_reactivation(true, true, true));
-    ASSERT(!typio_wl_lifecycle_should_commit_reactivation(false, true, true));
-    ASSERT(!typio_wl_lifecycle_should_commit_reactivation(true, false, true));
-    ASSERT(!typio_wl_lifecycle_should_commit_reactivation(true, true, false));
+TEST(classify_done_refocus_only_when_active_to_active_with_activate) {
+    /* Staying active *with* a fresh activate this batch = a real re-activation
+     * (new field) -> REFOCUS. */
+    ASSERT(typio_wl_lifecycle_classify_done(true, true, true) ==
+           TYPIO_WL_DONE_REFOCUS);
+    /* Staying active *without* an activate = a plain text-state update -> NONE.
+     * This is the guard that prevents rebuilding focus mid-composition. */
+    ASSERT(typio_wl_lifecycle_classify_done(true, true, false) ==
+           TYPIO_WL_DONE_NONE);
+}
+
+TEST(classify_done_none_when_staying_inactive) {
+    ASSERT(typio_wl_lifecycle_classify_done(false, false, true) ==
+           TYPIO_WL_DONE_NONE);
+    ASSERT(typio_wl_lifecycle_classify_done(false, false, false) ==
+           TYPIO_WL_DONE_NONE);
 }
 
 int main(void) {
@@ -104,9 +132,10 @@ int main(void) {
     run_test_rejects_unexpected_shortcuts_between_phases();
     run_test_only_active_phase_allows_key_events();
     run_test_activating_and_active_phases_allow_modifier_events();
-    run_test_defers_activate_only_for_already_focused_session();
-    run_test_cleans_up_deactivation_only_at_done_boundary();
-    run_test_commits_reactivation_only_for_active_to_active_done_boundary();
+    run_test_classify_done_focus_in_on_inactive_to_active();
+    run_test_classify_done_focus_out_on_active_to_inactive();
+    run_test_classify_done_refocus_only_when_active_to_active_with_activate();
+    run_test_classify_done_none_when_staying_inactive();
 
     printf("\n%d/%d tests passed\n", tests_passed, tests_run);
     return tests_passed == tests_run ? 0 : 1;

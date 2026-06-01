@@ -335,7 +335,7 @@ static void identity_restore_mode(TypioWlFrontend *frontend) {
     char *active_name = nullptr;
     char *engine_name = nullptr;
     char *mode_id = nullptr;
-    const TypioEngineStatus *current_mode;
+    const TypioKeyboardEngineStatus *current_mode;
 
     if (!frontend || !frontend->instance || !frontend->session ||
         !frontend->session->ctx || !frontend->current_identity.provider_name ||
@@ -359,7 +359,7 @@ static void identity_restore_mode(TypioWlFrontend *frontend) {
         goto cleanup;
     }
 
-    current_mode = typio_instance_get_last_status(frontend->instance);
+    current_mode = typio_instance_get_last_keyboard_status(frontend->instance);
     if (current_mode && current_mode->profile_id &&
         typio_str_equals(current_mode->profile_id, mode_id)) {
         goto cleanup;

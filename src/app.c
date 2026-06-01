@@ -203,7 +203,7 @@ static void typio_update_tray_tooltip(TypioApp *app) {
      * so the schema is visible even though the tray icon is engagement-only. */
     const char *profile_label = nullptr;
     if (app->state_controller) {
-        const TypioEngineStatus *mode =
+        const TypioKeyboardEngineStatus *mode =
             typio_state_controller_get_current_status(app->state_controller);
         if (mode && mode->profile_label && mode->profile_label[0]) {
             profile_label = mode->profile_label;
@@ -301,7 +301,7 @@ static void typio_update_tray_engine_status(TypioApp *app) {
 #endif
 
 static void typio_on_mode_change(TypioInstance *instance,
-                                 const TypioEngineStatus *mode,
+                                 const TypioKeyboardEngineStatus *mode,
                                  void *user_data) {
     TypioApp *app = user_data;
     TypioRegistry *registry;
@@ -761,7 +761,7 @@ static int typio_run_wayland(TypioApp *app) {
     typio_instance_set_status_icon_changed_callback(app->instance,
                                                     typio_on_status_icon_change,
                                                     app);
-    typio_instance_set_status_changed_callback(app->instance,
+    typio_instance_set_keyboard_status_changed_callback(app->instance,
                                               typio_on_mode_change,
                                               app);
 

@@ -268,7 +268,7 @@ static void typio_wl_vk_trigger_fail_safe(TypioWlFrontend *frontend,
               " active_generation=%u keymap_generation=%u"
               " current_generation_keymap=%s keyboard_grab=%s"
               " last_keymap_age_ms=%" PRIu64 " last_forward_age_ms=%" PRIu64
-              " phase=%s pending_reactivation=%s",
+              " phase=%s",
               operation ? operation : "event",
               typio_wl_vk_state_name(frontend->virtual_keyboard_state),
               drops,
@@ -280,8 +280,7 @@ static void typio_wl_vk_trigger_fail_safe(TypioWlFrontend *frontend,
               keyboard_grab_active ? "yes" : "no",
               last_keymap_age_ms,
               last_forward_age_ms,
-              typio_wl_lifecycle_phase_name(frontend->lifecycle_phase),
-              frontend->pending_reactivation ? "yes" : "no");
+              typio_wl_lifecycle_phase_name(frontend->lifecycle_phase));
     typio_dump_recent_log();
     if (frontend->keyboard) {
         typio_wl_keyboard_release_grab(frontend->keyboard);

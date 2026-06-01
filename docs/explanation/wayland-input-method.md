@@ -40,7 +40,7 @@ Every `zwp_input_method_v2` event does one thing — **record a fact**. No handl
 
 ### `activate` / `deactivate`
 
-Record the pending focus fact (`active = true` / `false`) for the current session, creating the session if none exists. They make no decision: an `activate` that arrives while already focused is just the same fact re-recorded — the next diff is a no-op until something actually changes, which is why "deferred reactivation" needs no flag.
+Record the pending focus fact (`active = true` / `false`) for the current session, creating the session if none exists. `activate` additionally records an `activate_seen` fact for the current `done` batch (and hides any stale positioned indicator from the prior activation). They make no transition decision themselves — that happens at `done`. `activate_seen` is what lets `done` tell a genuine (re)activation apart from a plain text-state update; see [ADR-0018](../adr/0018-focus-transition-classification.md).
 
 ### `surrounding_text`, `text_change_cause`, `content_type`
 
@@ -52,7 +52,9 @@ The compositor's double-buffer commit point, and where the per-step diff runs:
 
 1. **Serial increment**. `im_serial++`. The serial is the count of `done` events received; it is the commit serial for every `zwp_input_method_v2_commit()` call.
 2. **Apply facts**. The buffered `surrounding_text`, `content_type`, `text_change_cause`, and `active` facts become current atomically.
-3. **Reduce + diff**. `desired = reduce(facts)`; `apply(diff(desired, observe(resources)))`. Focus gained, focus lost, a re-activate while focused, and a no-op all fall out of the *same* computation — there is no `was_active`/`now_active` branch tree and no separate stale-grab rescue. If `observe()` reports a grab that should not exist (or a missing one that should), the same diff corrects it here.
+3. **Classify the focus change.** The focus facts are reduced by the pure `typio_wl_lifecycle_classify_done(was_active, now_active, activate_seen)` into one action — `FOCUS_IN`, `FOCUS_OUT`, `REFOCUS`, or `NONE` — which selects `transition_to_active` / `transition_to_inactive` / `transition_to_refocus` / no-op. The classifier lives in `engine/lifecycle_policy.c` and is unit-tested (`tests/test_lifecycle.c`). A `NONE` that still finds a non-routable grab triggers the stale-grab recovery. See [ADR-0018](../adr/0018-focus-transition-classification.md).
+
+   > Note: the focus path still carries an explicit `lifecycle_phase`; the fully *derived* reduce+diff model of [ADR-0003](../adr/0003-session-controller-reduce-diff.md) is not yet realised here, and `classify_done` is a small step toward it.
 
 ### `unavailable`
 
@@ -96,11 +98,11 @@ Briefly:
 - **Readiness gating** — vk forwarding is blocked until the keymap is confirmed, preventing modifier-sync errors during activation handshakes.
 - **Fail-safe downgrade** — if vk health degrades (keymap deadline missed, compositor stalls), the daemon falls back to local key handling rather than forwarding broken state.
 
-## Re-activate while focused needs no special case
+## Re-activate while focused: re-anchor, keep the grab
 
-A subtle protocol behaviour: the compositor may send `activate` while the daemon is still focused on the same surface (e.g. the user clicked from one text field to another inside the same window). Treating this as a full `deactivate` → `activate` cycle would tear down the grab, lose the preedit round-trip, and interrupt typing.
+A subtle protocol behaviour: the compositor may send `activate` while the daemon is still focused (e.g. the user clicked from one text field to another inside the same window). Treating this as a full `deactivate` → `activate` cycle would tear down the grab, lose the preedit round-trip, and interrupt typing.
 
-Under the derived model this requires **no detection and no flag**. `activate` just re-records `active = true` — a fact that is already true. At the next `done`, `desired = reduce(facts)` is unchanged, so `diff` is empty and the grab, serial, and composition are left untouched.
+The `activate_seen` fact makes this case explicit without that cost. At `done`, `classify_done(was=true, now=true, activate_seen=true)` returns `REFOCUS`, which runs `transition_to_refocus`: the keyboard grab and the engine's input context are **left intact** (they belong to the same input-method, not the field), and only the *position-sensitive* state is refreshed — the Panel anchor is reset and the on-focus indicator is re-evaluated for the new caret (gated by salience + recency). A `done` with no `activate` this batch (`activate_seen=false`) classifies as `NONE` and changes nothing, so plain text-state updates during composition never disturb the grab. See [ADR-0018](../adr/0018-focus-transition-classification.md).
 
 ## Resume and silent grab loss
 
@@ -131,6 +133,7 @@ If `update_plan == PANEL_ONLY`, the Panel is repainted synchronously but the exp
 |---|---|---|
 | `zwp_input_method_v2` | `src/frontend/input_method.c` | Event handlers (record facts), serial chokepoint |
 | Session lifecycle | `src/engine/lifecycle.c` | Phase transitions, resume handling, hard reset |
+| Lifecycle policy (pure) | `src/engine/lifecycle_policy.c` | `classify_done`, transition validity, phase predicates — dependency-free, unit-tested |
 | Reconciler | `src/engine/reconciler.c` | Observes resources, detects divergence, triggers repair |
 | `zwp_input_method_keyboard_grab_v2` | `src/frontend/keyboard.c` | Grab create/destroy, key/modifiers/repeat listeners, emergency exit |
 | Key epoch + tracking | `src/input/tracker.{c,h}` | Epoch fence and symmetric press/release |

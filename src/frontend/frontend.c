@@ -543,7 +543,7 @@ bool typio_wl_frontend_reconnect(TypioWlFrontend *frontend) {
      * key during the outage produced no key-up, so fence the key generation
      * and clear tracking; the fresh grab after reconnect starts from zero. */
     frontend->lifecycle_phase = TYPIO_WL_PHASE_INACTIVE;
-    frontend->pending_reactivation = false;
+    frontend->activate_seen = false;
     frontend->reconcile_divergence_since_ms = 0;
     frontend->active_generation_owned_keys = false;
     frontend->carried_vk_modifiers = false;

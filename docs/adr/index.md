@@ -34,6 +34,7 @@ Decisions about the framework core (engine ABI, composition contract) live in th
 | [ADR-0015](0015-candidate-popup-lag-final-fixes.md) | Candidate popup lag — final fixes (acquire timeout, retry deferral, persistent upload context) | Accepted |
 | [ADR-0016](0016-per-glyph-font-fallback.md) | Per-glyph font fallback with format-12 charmap selection | Accepted |
 | [ADR-0017](0017-positioned-ui-arbitration.md) | Positioned UI arbitration for panel owners | Accepted |
+| [ADR-0018](0018-focus-transition-classification.md) | Focus-transition classification and re-activation | Accepted |
 
 ## Looking for something else?
 

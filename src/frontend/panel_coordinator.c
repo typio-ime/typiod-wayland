@@ -42,6 +42,16 @@ void typio_wl_panel_coordinator_reset_anchor(TypioWlFrontend *frontend) {
     frontend->position_anchor_probe_generation = 0;
 }
 
+void typio_wl_panel_coordinator_note_caret_rect(TypioWlFrontend *frontend) {
+    if (!frontend) return;
+    frontend->position_anchor_has_caret = true;
+}
+
+void typio_wl_panel_coordinator_clear_caret_rect(TypioWlFrontend *frontend) {
+    if (!frontend) return;
+    frontend->position_anchor_has_caret = false;
+}
+
 void typio_wl_panel_coordinator_mark_anchor_ready(TypioWlFrontend *frontend,
                                                    const char *reason) {
     if (!frontend || frontend->position_anchor_generation == 0) return;

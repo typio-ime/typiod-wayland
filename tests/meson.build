@@ -97,6 +97,13 @@ test_reconcile_model = executable('test_reconcile_model',
 )
 test('reconcile_model', test_reconcile_model)
 
+test_lifecycle = executable('test_lifecycle',
+    ['test_lifecycle.c', '../src/engine/lifecycle_policy.c'],
+    include_directories: wayland_test_inc,
+    dependencies: libtypio_dep,
+)
+test('lifecycle', test_lifecycle)
+
 test_reconnect_backoff = executable('test_reconnect_backoff',
     ['test_reconnect_backoff.c', '../src/engine/backoff.c'],
     include_directories: wayland_test_inc,
