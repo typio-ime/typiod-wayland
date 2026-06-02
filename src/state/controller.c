@@ -27,9 +27,9 @@ struct TypioStateController {
     bool engine_active;
 
     bool has_status;
-    TypioKeyboardEngineStatus status;
-    char *status_profile_id;
-    char *status_profile_label;
+    TypioKeyboardEngineMode status;
+    char *status_id;
+    char *status_label;
     char *status_display_label;
     char *status_icon_name;
 
@@ -76,12 +76,12 @@ static void typio_state_controller_update_engine_active(
 }
 
 static void typio_state_controller_clear_mode(TypioStateController *ctrl) {
-    free(ctrl->status_profile_id);
-    free(ctrl->status_profile_label);
+    free(ctrl->status_id);
+    free(ctrl->status_label);
     free(ctrl->status_display_label);
     free(ctrl->status_icon_name);
-    ctrl->status_profile_id = nullptr;
-    ctrl->status_profile_label = nullptr;
+    ctrl->status_id = nullptr;
+    ctrl->status_label = nullptr;
     ctrl->status_display_label = nullptr;
     ctrl->status_icon_name = nullptr;
     ctrl->has_status = false;
@@ -89,16 +89,15 @@ static void typio_state_controller_clear_mode(TypioStateController *ctrl) {
 }
 
 static void typio_state_controller_set_mode(TypioStateController *ctrl,
-                                            const TypioKeyboardEngineStatus *mode) {
+                                            const TypioKeyboardEngineMode *mode) {
     typio_state_controller_clear_mode(ctrl);
     if (!mode) {
         return;
     }
     ctrl->has_status = true;
-    ctrl->status.engagement = mode->engagement;
-    ctrl->status.profile_id = ctrl->status_profile_id = typio_state_strdup(mode->profile_id);
-    ctrl->status.profile_label =
-        ctrl->status_profile_label = typio_state_strdup(mode->profile_label);
+    ctrl->status.id = ctrl->status_id = typio_state_strdup(mode->id);
+    ctrl->status.label =
+        ctrl->status_label = typio_state_strdup(mode->label);
     ctrl->status.display_label =
         ctrl->status_display_label = typio_state_strdup(mode->display_label);
     ctrl->status.icon_name = ctrl->status_icon_name = typio_state_strdup(mode->icon_name);
@@ -217,7 +216,7 @@ bool typio_state_controller_get_engine_active(
     return ctrl ? ctrl->engine_active : false;
 }
 
-const TypioKeyboardEngineStatus *typio_state_controller_get_current_status(
+const TypioKeyboardEngineMode *typio_state_controller_get_current_status(
     TypioStateController *ctrl) {
     if (!ctrl || !ctrl->has_status) {
         return nullptr;
@@ -303,7 +302,7 @@ void typio_state_controller_notify_voice_engine_changed(
 
 void typio_state_controller_notify_status_changed(
     TypioStateController *ctrl,
-    const TypioKeyboardEngineStatus *mode) {
+    const TypioKeyboardEngineMode *mode) {
     if (!ctrl) {
         return;
     }

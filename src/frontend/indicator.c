@@ -82,7 +82,7 @@ static const char *mode_cache_lookup(TypioWlFrontend *frontend,
 
 static void mode_cache_update(TypioWlFrontend *frontend,
                                const char *engine_name,
-                               const TypioKeyboardEngineStatus *mode) {
+                               const TypioKeyboardEngineMode *mode) {
     if (!frontend || !engine_name || !mode) return;
 
     for (size_t i = 0; i < frontend->indicator_mode_cache_count; i++) {
@@ -106,7 +106,7 @@ static void mode_cache_update(TypioWlFrontend *frontend,
 }
 
 static bool build_indicator_label(TypioWlFrontend *frontend,
-                                  const TypioKeyboardEngineStatus *mode,
+                                  const TypioKeyboardEngineMode *mode,
                                   char *label,
                                   size_t label_size) {
     TypioRegistry *registry;
@@ -154,25 +154,25 @@ static bool build_indicator_label(TypioWlFrontend *frontend,
 }
 
 void typio_wl_frontend_show_indicator_for_state(TypioWlFrontend *frontend,
-                                                  const TypioKeyboardEngineStatus *mode) {
+                                                  const TypioKeyboardEngineMode *mode) {
     char label[TYPIO_POSITIONED_UI_LABEL_CAP];
 
     if (!frontend || !frontend->instance) return;
     if (!indicator_enabled(frontend)) return;
     if (!frontend->panel) return;
 
-    /* Deliberate-change path: a user-initiated engine switch, profile
-     * change, or engagement toggle always earns confirmation feedback,
-     * *regardless of salience*. The user just acted; give them the clearest
-     * signal. salience governs only the unprompted on-focus auto-display
-     * (see show_indicator_on_focus), not this path. */
+    /* Deliberate-change path: a user-initiated engine switch or mode
+     * change always earns confirmation feedback, *regardless of salience*.
+     * The user just acted; give them the clearest signal. salience governs
+     * only the unprompted on-focus auto-display (see show_indicator_on_focus),
+     * not this path. */
     if (!build_indicator_label(frontend, mode, label, sizeof(label))) return;
 
     typio_wl_frontend_show_indicator(frontend, label);
 }
 
 void typio_wl_frontend_show_indicator_on_focus(TypioWlFrontend *frontend,
-                                                const TypioKeyboardEngineStatus *mode) {
+                                                const TypioKeyboardEngineMode *mode) {
     if (!frontend) return;
 
     /* Salience gate — focus path only. salience guides exactly one decision:

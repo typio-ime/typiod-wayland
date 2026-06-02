@@ -125,7 +125,7 @@ Subscribes the calling connection to one or more topics. Omitting `topics` (or s
 | Topic | Payload |
 |---|---|
 | `engine.changed` | `{ activeKeyboardEngine, activeVoiceEngine }` |
-| `engine.statusChanged` | `{ engagement, profileId, profileLabel, displayLabel, iconName }` |
+| `engine.statusChanged` | `{ modeId, modeLabel, displayLabel, iconName, profileId, profileLabel }` |
 | `config.changed` | (reserved — emitted on config writes; payload TBD) |
 | `runtime.changed` | (reserved — emitted on runtime-state edges) |
 | `daemon.shuttingDown` | `{}` |

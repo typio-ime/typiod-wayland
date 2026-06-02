@@ -35,59 +35,6 @@
 #include <stdio.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
-static bool key_route_is_printable_text_unicode(uint32_t unicode) {
-    return unicode >= 0x20 && unicode != 0x7F;
-}
-
-static bool key_route_should_forward_basic_text(TypioWlFrontend *frontend,
-                                                uint32_t modifiers,
-                                                uint32_t unicode) {
-    TypioRegistry *registry;
-    char *engine_name;
-    TypioConfig *config;
-    const char *route_mode;
-
-    if (!frontend || !frontend->instance) {
-        return false;
-    }
-
-    if ((modifiers & (TYPIO_MOD_CTRL | TYPIO_MOD_ALT | TYPIO_MOD_SUPER)) != 0) {
-        return false;
-    }
-
-    if (!key_route_is_printable_text_unicode(unicode)) {
-        return false;
-    }
-
-    registry = typio_instance_get_registry(frontend->instance);
-    if (!registry) {
-        return false;
-    }
-
-    engine_name = typio_registry_get_active_keyboard(registry);
-    if (!engine_name || strcmp(engine_name, "basic") != 0) {
-        typio_free_string(engine_name);
-        return false;
-    }
-    typio_free_string(engine_name);
-
-    config = typio_instance_get_config(frontend->instance);
-    route_mode = typio_config_get_string(config,
-                                         "engines.basic.printable_key_mode",
-                                         "forward");
-    if (!route_mode || strcmp(route_mode, "commit") == 0) {
-        return false;
-    }
-
-    /* If compose sequences are enabled, printable keys must go through the
-     * basic engine so that dead-key composition works. */
-    if (typio_config_get_bool(config, "engines.basic.compose", false)) {
-        return false;
-    }
-
-    return true;
-}
-
 static TypioWlKeyDecision key_route_decision(TypioWlKeyAction action,
                                              TypioWlKeyReason reason) {
     TypioWlKeyDecision decision = {
@@ -261,7 +208,7 @@ TypioWlReservedAction typio_wl_key_route_reserved_action(
     }
 
     if (typio_wl_key_route_binding_matches_press(&shortcuts->voice_ptt,
-                                                 keysym, modifiers)) {
+                                                  keysym, modifiers)) {
         return TYPIO_WL_RESERVED_ACTION_VOICE_PTT;
     }
 
@@ -450,21 +397,6 @@ void typio_wl_key_route_process_press(TypioWlKeyboard *keyboard,
                                  decision, nullptr);
         typio_log_debug("Bypassing engine for application shortcut: keycode=%u keysym=0x%x mods=0x%x",
                   key, keysym, modifiers);
-        return;
-    }
-
-    if (key_route_should_forward_basic_text(frontend, modifiers, unicode)) {
-        decision = key_route_decision(TYPIO_WL_KEY_ACTION_FORWARD,
-                                      TYPIO_WL_KEY_REASON_BASIC_PASSTHROUGH);
-        typio_wl_vk_forward_key(keyboard, time, key,
-                                WL_KEYBOARD_KEY_STATE_PRESSED, unicode);
-        key_set_state(frontend, key, TYPIO_KEY_TRACK_BASIC_PASSTHROUGH);
-        key_route_trace_decision(keyboard, "press-forward", key, keysym,
-                                 modifiers, unicode,
-                                 TYPIO_KEY_TRACK_BASIC_PASSTHROUGH,
-                                 decision, "engine=basic");
-        typio_log_debug("Bypassing basic engine for printable text key: keycode=%u keysym=0x%x unicode=U+%04X",
-                  key, keysym, unicode);
         return;
     }
 

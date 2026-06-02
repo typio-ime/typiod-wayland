@@ -511,8 +511,8 @@ static void transition_to_active(TypioWlFrontend *frontend) {
     typio_wl_panel_coordinator_reset_anchor(frontend);
 
     {
-        const TypioKeyboardEngineStatus *mode =
-            typio_instance_get_last_keyboard_status(frontend->instance);
+        const TypioKeyboardEngineMode *mode =
+            typio_instance_get_last_keyboard_mode(frontend->instance);
         if (mode && mode->display_label && mode->display_label[0]) {
             typio_wl_frontend_show_indicator_on_focus(frontend, mode);
         }
@@ -739,9 +739,11 @@ static void on_composition_callback([[maybe_unused]] TypioInputContext *ctx,
     if (composition) {
         session->last_candidate_count = composition->candidate_count;
         session->last_candidate_selected = composition->selected;
+        session->last_host_managed_selection = composition->host_managed_selection;
     } else {
         session->last_candidate_count = 0;
         session->last_candidate_selected = -1;
+        session->last_host_managed_selection = false;
     }
     candidate_snapshot_assign(&session->candidate_snapshot, composition);
 

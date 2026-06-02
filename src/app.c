@@ -201,13 +201,13 @@ static void typio_update_tray_tooltip(TypioApp *app) {
     }
 
     /* Surface the active profile (e.g. Rime schema name) on the keyboard line
-     * so the schema is visible even though the tray icon is engagement-only. */
+     * so the schema is visible in the UI panel and tray tooltip. */
     const char *profile_label = nullptr;
     if (app->state_controller) {
-        const TypioKeyboardEngineStatus *mode =
+        const TypioKeyboardEngineMode *mode =
             typio_state_controller_get_current_status(app->state_controller);
-        if (mode && mode->profile_label && mode->profile_label[0]) {
-            profile_label = mode->profile_label;
+        if (mode && mode->label && mode->label[0]) {
+            profile_label = mode->label;
         }
     }
 
@@ -302,8 +302,8 @@ static void typio_update_tray_engine_status(TypioApp *app) {
 #endif
 
 static void typio_on_mode_change(TypioInstance *instance,
-                                 const TypioKeyboardEngineStatus *mode,
-                                 void *user_data) {
+                                  const TypioKeyboardEngineMode *mode,
+                                  void *user_data) {
     TypioApp *app = user_data;
     TypioRegistry *registry;
 
@@ -312,10 +312,10 @@ static void typio_on_mode_change(TypioInstance *instance,
         registry = typio_instance_get_registry(app->instance);
         name = registry ? typio_registry_get_active_keyboard(registry) : nullptr;
 #ifdef HAVE_WAYLAND
-        if (app->wl_frontend && name && mode && mode->profile_id && mode->profile_id[0]) {
+        if (app->wl_frontend && name && mode && mode->id && mode->id[0]) {
             typio_wl_frontend_remember_active_mode(app->wl_frontend,
                                                    name,
-                                                   mode->profile_id);
+                                                   mode->id);
         }
         if (app->wl_frontend && mode && mode->display_label && mode->display_label[0]) {
             typio_wl_frontend_show_indicator_for_state(app->wl_frontend, mode);
@@ -775,7 +775,7 @@ static int typio_run_wayland(TypioApp *app) {
     typio_instance_set_status_icon_changed_callback(app->instance,
                                                     typio_on_status_icon_change,
                                                     app);
-    typio_instance_set_keyboard_status_changed_callback(app->instance,
+    typio_instance_set_keyboard_mode_changed_callback(app->instance,
                                               typio_on_mode_change,
                                               app);
 

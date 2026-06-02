@@ -111,23 +111,17 @@ static char *build_engine_changed_payload(TypioInstance *inst)
 
 static char *build_status_changed_payload(TypioStateController *ctrl)
 {
-    const TypioKeyboardEngineStatus *mode = ctrl
+    const TypioKeyboardEngineMode *mode = ctrl
         ? typio_state_controller_get_current_status(ctrl) : NULL;
     TipJsonBuilder *b = tip_json_builder_new();
     TIP_JSON_OBJ_START(b);
     if (mode) {
-        const char *engagement =
-            mode->engagement == TYPIO_KB_ENGAGE_PASSTHROUGH ? "passthrough" :
-            mode->engagement == TYPIO_KB_ENGAGE_OFF ? "off" : "active";
-        TIP_JSON_KEY(b, "engagement");
-        tip_json_builder_append_string(b, engagement);
+        TIP_JSON_KEY(b, "modeId");
+        tip_json_builder_append_string(b, mode->id ? mode->id : "");
         TIP_JSON_COMMA(b);
-        TIP_JSON_KEY(b, "profileId");
-        tip_json_builder_append_string(b, mode->profile_id ? mode->profile_id : "");
-        TIP_JSON_COMMA(b);
-        TIP_JSON_KEY(b, "profileLabel");
+        TIP_JSON_KEY(b, "modeLabel");
         tip_json_builder_append_string(b,
-            mode->profile_label ? mode->profile_label : "");
+            mode->label ? mode->label : "");
         TIP_JSON_COMMA(b);
         TIP_JSON_KEY(b, "displayLabel");
         tip_json_builder_append_string(b,
@@ -136,6 +130,14 @@ static char *build_status_changed_payload(TypioStateController *ctrl)
         TIP_JSON_KEY(b, "iconName");
         tip_json_builder_append_string(b,
             mode->icon_name ? mode->icon_name : "");
+        TIP_JSON_COMMA(b);
+        TIP_JSON_KEY(b, "profileId");
+        tip_json_builder_append_string(b,
+            mode->profile_id ? mode->profile_id : "");
+        TIP_JSON_COMMA(b);
+        TIP_JSON_KEY(b, "profileLabel");
+        tip_json_builder_append_string(b,
+            mode->profile_label ? mode->profile_label : "");
     }
     TIP_JSON_OBJ_END(b);
     return tip_json_builder_steal(b);

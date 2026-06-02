@@ -335,7 +335,7 @@ static void identity_restore_mode(TypioWlFrontend *frontend) {
     char *active_name = nullptr;
     char *engine_name = nullptr;
     char *mode_id = nullptr;
-    const TypioKeyboardEngineStatus *current_mode;
+    const TypioKeyboardEngineMode *current_mode;
 
     if (!frontend || !frontend->instance || !frontend->session ||
         !frontend->session->ctx || !frontend->current_identity.provider_name ||
@@ -359,15 +359,15 @@ static void identity_restore_mode(TypioWlFrontend *frontend) {
         goto cleanup;
     }
 
-    current_mode = typio_instance_get_last_keyboard_status(frontend->instance);
-    if (current_mode && current_mode->profile_id &&
-        typio_str_equals(current_mode->profile_id, mode_id)) {
+    current_mode = typio_instance_get_last_keyboard_mode(frontend->instance);
+    if (current_mode && current_mode->id &&
+        typio_str_equals(current_mode->id, mode_id)) {
         goto cleanup;
     }
 
     /* Push the remembered profile back into the active engine. The engine's
      * own "schema"/option notification then drives the status reflection. */
-    if (typio_input_context_set_status(frontend->session->ctx, mode_id) == TYPIO_OK) {
+    if (typio_input_context_set_active_mode(frontend->session->ctx, mode_id) == TYPIO_OK) {
         typio_log_debug("Restored mode '%s' for %s",
                         mode_id, frontend->current_identity.stable_key);
     } else {

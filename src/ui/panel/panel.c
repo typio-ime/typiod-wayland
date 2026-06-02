@@ -117,11 +117,11 @@ static PanelDelta classify_delta(const PanelGeometry *geom,
 /* ── Mode label ─────────────────────────────────────────────────────── */
 
 static char *build_mode_label(TypioPanel *panel) {
-    const TypioKeyboardEngineStatus *mode;
+    const TypioKeyboardEngineMode *mode;
 
     if (!panel || !panel->frontend || !panel->frontend->instance) return nullptr;
 
-    mode = typio_instance_get_last_keyboard_status(panel->frontend->instance);
+    mode = typio_instance_get_last_keyboard_mode(panel->frontend->instance);
     if (!mode || !mode->display_label || !mode->display_label[0]) return nullptr;
 
     return strdup(mode->display_label);

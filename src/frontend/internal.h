@@ -90,13 +90,10 @@ typedef enum TypioWlLoopStage {
  * Each key can be in exactly one tracking state. Transitions:
  *
  *   IDLE ──press──▶ TRACK_FORWARDED          (forwarded to app)
- *   IDLE ──press──▶ TRACK_BASIC_PASSTHROUGH  (basic printable text bypasses engine)
  *   IDLE ──press──▶ TRACK_APP_SHORTCUT       (application shortcut bypasses engine)
  *   TRACK_APP_SHORTCUT ─physical release──▶ IDLE
  *   TRACK_FORWARDED ─force release──▶ TRACK_RELEASED_PENDING
  *   TRACK_FORWARDED ─physical release──▶ IDLE
- *   TRACK_BASIC_PASSTHROUGH ─force release──▶ TRACK_RELEASED_PENDING
- *   TRACK_BASIC_PASSTHROUGH ─physical release──▶ IDLE
  *   TRACK_RELEASED_PENDING ─physical release──▶ IDLE  (consumed)
  *   TRACK_SUPPRESSED_STARTUP ─physical release──▶ IDLE
  */
@@ -183,6 +180,7 @@ struct TypioWlSession {
      * this rather than querying the input context. */
     size_t last_candidate_count;
     int    last_candidate_selected;
+    bool   last_host_managed_selection;
 
     /* Heap-owned deep copy of the latest composition's candidate list. The
      * libtypio borrowed pointers are only valid inside the callback, so we
@@ -394,9 +392,9 @@ bool typio_wl_frontend_init_indicator(TypioWlFrontend *frontend);
 void typio_wl_frontend_show_indicator(TypioWlFrontend *frontend,
                                        const char *text);
 void typio_wl_frontend_show_indicator_for_state(TypioWlFrontend *frontend,
-                                                 const TypioKeyboardEngineStatus *mode);
+                                                  const TypioKeyboardEngineMode *mode);
 void typio_wl_frontend_show_indicator_on_focus(TypioWlFrontend *frontend,
-                                                const TypioKeyboardEngineStatus *mode);
+                                                 const TypioKeyboardEngineMode *mode);
 void typio_wl_frontend_record_key_activity(TypioWlFrontend *frontend);
 void typio_wl_frontend_hide_indicator(TypioWlFrontend *frontend);
 int typio_wl_frontend_get_indicator_fd(TypioWlFrontend *frontend);

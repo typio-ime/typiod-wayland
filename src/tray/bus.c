@@ -257,18 +257,17 @@ int typio_tray_dispatch(TypioTray *tray) {
 }
 
 /* Assemble the tray tooltip from controller state. The active profile (e.g.
- * Rime schema name) rides on the keyboard line, since the icon is engagement-
- * only (ADR-0009). The tray bus is the single owner of all state-driven tray
- * mutations (icon, engine, tooltip). */
+ * Rime schema name) rides on the keyboard line. The tray bus is the single
+ * owner of all state-driven tray mutations (icon, engine, tooltip). */
 static void tray_refresh_tooltip(TypioTray *tray, TypioStateController *ctrl) {
     const char *kb =
         typio_state_controller_get_active_engine_display_name(ctrl);
     const char *voice =
         typio_state_controller_get_active_voice_engine_display_name(ctrl);
-    const TypioKeyboardEngineStatus *mode =
+    const TypioKeyboardEngineMode *mode =
         typio_state_controller_get_current_status(ctrl);
-    const char *profile = (mode && mode->profile_label && mode->profile_label[0])
-                          ? mode->profile_label : nullptr;
+    const char *profile = (mode && mode->label && mode->label[0])
+                          ? mode->label : nullptr;
     char desc[256];
 
     if (!kb || !*kb) {
@@ -317,7 +316,7 @@ static void tray_state_change_callback(void *user_data,
             break;
         }
         case TYPIO_STATE_CHANGE_STATUS: {
-            const TypioKeyboardEngineStatus *mode =
+            const TypioKeyboardEngineMode *mode =
                 typio_state_controller_get_current_status(ctrl);
             if (mode && mode->icon_name) {
                 typio_tray_set_icon(tray, mode->icon_name);
