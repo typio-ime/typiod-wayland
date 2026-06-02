@@ -124,7 +124,7 @@ Recovery shares the normal path **only for divergences `observe()` can see** —
 - **Suspend/resume** — a grab dead across suspend leaves a *live proxy*, which `observe()` cannot distinguish from a healthy one. A resume detector therefore records the gap fact and invalidates the grab epoch; the next diff then rebuilds. The input context is never `focus_out`'d, so the engine's in-flight composition survives.
 - **Compositor reconnect** — connection death surfaces as `POLLHUP`; it is recorded as a fact that makes `desired` inactive, and the fresh `activate` on reconnect drives the rebuild. Engine/session state, aux handlers, the config watch, and the resume detector are preserved.
 
-A grab the compositor orphans with *no* protocol event, suspend, or disconnect is invisible to `observe()` and is **not** auto-recovered. See [Lifecycle Resilience §What the diff can and cannot see](lifecycle-resilience.md#what-the-diff-can--and-cannot--see) and its [Known limits](lifecycle-resilience.md#known-limits).
+A grab the compositor orphans with *no* protocol event, suspend, or disconnect is invisible to `observe()` and is **not** auto-recovered — it is a known limit of the diff, which can only act on facts it can see.
 
 ## Shortcut policy
 

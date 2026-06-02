@@ -13,11 +13,12 @@ The Linux/Wayland host for the [Typio](../typio) input method framework. This re
   - [Configuration Reference](reference/configuration.md) — `core.toml` and `wayland.toml` keys, reload behaviour, and file structure
   - [Engine Discovery Reference](reference/engine-discovery.md) — search path, file-name rules, icons
 - **[Explanation](explanation/)** — Understanding-oriented design documents.
+  - [Project Scope: typio-wayland vs. libtypio](explanation/project-scope.md)
   - [Wayland Input Method Protocol](explanation/wayland-input-method.md)
   - [Panel Architecture](explanation/panel-architecture.md)
   - [Frontend Graphics](explanation/frontend-graphics.md)
+  - [Vulkan and Flux Rendering](explanation/vulkan-flux-rendering.md)
   - [Timing Model](explanation/timing-model.md)
-  - [Lifecycle Resilience and Recovery](explanation/lifecycle-resilience.md)
   - [Control Surfaces](explanation/control-surfaces.md)
 - **[Developer Documentation](dev/)** — Contributor-oriented docs.
   - [Developer Setup](dev/setup.md)

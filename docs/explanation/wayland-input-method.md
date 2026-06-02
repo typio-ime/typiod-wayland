@@ -4,7 +4,7 @@
 
 This is a **connective-tissue** document: it does not replace the protocol specification, the source-code comments, or the deep-dive timing model. It exists so a reader can answer "how does typio handle X?" in one stop rather than grepping across `wl_input_method.c`, `wl_keyboard.c`, and five other explanation files.
 
-For the protocol specification see the upstream [wayland-protocols `input-method-unstable-v2.xml`](https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/unstable/input-method/input-method-unstable-v2.xml). For timing and lifecycle rules see [Timing Model](timing-model.md); for daemon resilience see [Lifecycle Resilience and Recovery](lifecycle-resilience.md).
+For the protocol specification see the upstream [wayland-protocols `input-method-unstable-v2.xml`](https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/unstable/input-method/input-method-unstable-v2.xml). For timing, lifecycle, and daemon-resilience rules see [Timing Model](timing-model.md).
 
 ## Protocol Stack
 
@@ -180,6 +180,5 @@ If `update_plan == PANEL_ONLY`, the Panel is repainted synchronously but the exp
 
 ## See Also
 
-- [Timing Model](timing-model.md) — the derived reduce+diff state model, truth sources, event-loop scheduling
-- [Lifecycle Resilience and Recovery](lifecycle-resilience.md) — suspend/resume, compositor restart, silent grab loss
+- [Timing Model](timing-model.md) — the derived reduce+diff state model, truth sources, event-loop scheduling, and daemon resilience (suspend/resume, compositor restart, silent grab loss)
 - [Panel Appearance](../dev/panel-appearance.md) — Vulkan Panel rendering pipeline

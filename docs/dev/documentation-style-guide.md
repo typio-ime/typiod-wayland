@@ -41,48 +41,6 @@ If content seems to belong in two places, it is two documents — split it.
 | User-visible behavior changed | Add entry under "Unreleased" in `CHANGELOG.md` |
 | Pure internal refactor with no user-visible effect | No doc change needed |
 
-## Required Documents
-
-These files must exist and stay current. A PR that invalidates one without
-updating it should not merge.
-
-### `docs/dev/` — contributor onboarding
-
-| File | Purpose |
-|------|---------|
-| `docs/dev/setup.md` | Build prerequisites, dependency layout, build/run commands |
-| `docs/dev/testing.md` | How to run the suite, sanitizer builds, test ownership |
-| `docs/dev/code-style.md` | Language versions, formatting, naming, design preferences |
-| `docs/dev/documentation-style-guide.md` | This file |
-| `docs/dev/maintenance.md` | Long-lived maintenance invariants and checklists |
-
-### `docs/reference/` — lookup tables
-
-| File | Purpose |
-|------|---------|
-| `docs/reference/configuration.md` | Every config key, defaults, reload behavior |
-| `docs/reference/ipc-protocol.md` | TIP v1 protocol: methods, events, error codes |
-| `docs/reference/engine-discovery.md` | Search path, naming rules, icon lookup |
-| `docs/reference/glossary.md` | Canonical project terms with one-line definitions |
-
-### `docs/adr/` — decision log
-
-| File | Purpose |
-|------|---------|
-| `docs/adr/index.md` | Numbered table of all ADRs with status |
-| `docs/adr/template.md` | Boilerplate for new ADRs |
-
-### `docs/explanation/` — design context
-
-| File | Purpose |
-|------|---------|
-| `docs/explanation/wayland-input-method.md` | How the host uses `zwp_input_method_v2` |
-| `docs/explanation/panel-architecture.md` | Panel structure, layer boundaries, owner arbitration, anchors |
-| `docs/explanation/frontend-graphics.md` | Render pipeline, flux independence argument |
-| `docs/explanation/timing-model.md` | Keyboard timing, epochs, shortcut policy |
-| `docs/explanation/lifecycle-resilience.md` | Crash recovery, state repair |
-| `docs/explanation/control-surfaces.md` | Tray, D-Bus status, future settings UI |
-
 ## Writing Conventions
 
 ### Voice and tone
