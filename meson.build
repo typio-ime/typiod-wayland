@@ -1,5 +1,5 @@
 project('typio-wayland', 'c',
-    version: '0.1.3',
+    version: '0.1.4',
     default_options: [
         'c_std=c23',
         'warning_level=2',

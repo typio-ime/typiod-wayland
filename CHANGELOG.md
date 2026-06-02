@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-06-02
+
+### Added
+
+- **`INDEX_0` host-managed selection key.** Digit `0` now selects the 10th
+  candidate (index 9). Added `TYPIO_WL_HOST_SEL_COMMIT_INDEX_0` enum value
+  and corresponding keysym mapping, resolve logic, and commit detection in
+  `candidate_guard.c`.
+
 ## [0.1.3] — 2026-06-02
 
 ### Added
