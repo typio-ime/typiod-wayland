@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] — 2026-06-02
+
+### Fixed
+
+- **Candidate panel went blank/stale after extended CJK input.** The glyph atlas
+  shelf packer only ever advanced and the old hash-only compaction explicitly
+  abandoned texture space, so once the 2048² image saturated (a few thousand
+  distinct glyphs — routine for a CJK IME) new glyphs never packed again and
+  rendered blank permanently. ADR-0019's root cause was inverted: the texture
+  fills long before the hash table reaches its 75 % threshold, so compaction
+  rarely ran and never reclaimed the binding resource. Replaced it with
+  `glyph_atlas_reclaim()`, a wholesale atlas rebuild (texture + hash table +
+  packer + counts) triggered on 75 % hash load **or** packer exhaustion; the
+  next draw re-rasterises the visible page lazily. (ADR-0020, supersedes ADR-0019)
+- **Uncached fallback-font resolution.** The per-codepoint `FcFontSort` (over
+  every installed font) ran on every layout re-creation under LRU churn; the
+  coverage-keyed cache built to prevent this was never wired in. Added a
+  per-`(codepoint, weight)` resolution memo and removed the dead
+  `fallback_cache` module. (ADR-0020)
+
+### Changed
+
+- **Glyph/font layer modularized.** Split the 1600-line `text_shaper.c` (~380
+  now) into `glyph_upload`, `glyph_atlas`, `font_cache`, and `font_resolve`,
+  each header documenting its Bound/Evict/Reclaim/Observe contract. (ADR-0020)
+
+### Added
+
+- **Glyph-layer diagnostics.** `typio_text_shaper_log_diag()` /
+  `typio_text_shaper_get_diag()` expose atlas fill, shelf height, cumulative
+  rebuilds, glyphs rasterised, and fallback memo hit/miss; wired into the panel
+  slow-render path so a stall logs glyph-layer state inline. (ADR-0020)
+
 ## [0.1.6] — 2026-06-02
 
 ### Fixed
