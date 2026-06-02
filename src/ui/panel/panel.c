@@ -282,6 +282,9 @@ static bool panel_render(TypioPanel *panel,
                         panel->geom ? panel->geom->panel_w : 0,
                         panel->geom ? panel->geom->panel_h : 0,
                         (double)scale, cands->content_signature);
+        /* Correlate the stall with glyph-layer state: atlas saturation, rebuild
+         * churn, and uncached fallback resolution are the usual culprits. */
+        typio_text_shaper_log_diag("slow-render");
     }
 
     return ok;

@@ -1,10 +1,17 @@
 # ADR-0019: Atlas hash-table compaction for sustained CJK input
 
-- **Status**: Accepted
+- **Status**: Superseded by [ADR-0020](0020-atlas-reclamation-and-glyph-layer-modularization.md)
 - **Date**: 2026-06-02
 - **Deciders**: Project maintainers
 - **Supersedes the hash-table strategy of**: [ADR-0012](0012-glyph-atlas-shared-texture.md)
 - **Relates to**: [ADR-0009](0009-long-term-performance-optimizations.md)
+
+> **Superseded.** This ADR's root-cause attribution was inverted: the atlas
+> *texture* saturates (a few thousand distinct glyphs) well before the hash
+> table reaches its 75 % threshold (~98 K), so hash compaction rarely ran and
+> never reclaimed the texture space that was the actual bound. ADR-0020 replaces
+> the hash-only compaction with a full atlas rebuild and removes the
+> LRU-iteration API described in §4 below. Retained for the record.
 
 ## Context
 

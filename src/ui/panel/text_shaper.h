@@ -73,22 +73,47 @@ void typio_text_shaper_purge_font_caches(void);
 uint32_t typio_text_atlas_entry_count(void);
 
 /*
- * Compact the glyph atlas hash table by removing entries no longer referenced
- * by any layout in @pc's LRU cache.
+ * Reclaim the glyph atlas when it has accumulated too much dead weight.
  *
- * The atlas uses an open-addressing hash table for glyph lookup.  Over time,
- * entries for evicted layouts accumulate as dead weight, degrading lookup from
- * O(1) toward O(n) via linear-probe chains.  Compaction rebuilds the table
- * with only live entries — O(live_glyphs) CPU work, no GPU involvement.
+ * Two resources grow as distinct glyphs accumulate over a session: the
+ * open-addressing lookup table (dead entries lengthen probe chains toward
+ * O(n)) and the atlas TEXTURE itself (the shelf packer only advances, so
+ * evicted glyphs' pixels are never reclaimed and the image eventually
+ * saturates — after which new glyphs render blank). When either the hash
+ * load factor crosses 75% OR the packer reports the image is full, the atlas
+ * is fully rebuilt: image, slots, packer cursor, and live count are reset and
+ * the next draw re-rasterises the visible page lazily into a fresh atlas.
  *
- * Atlas texture pixels are NOT relocated; only the hash table is rebuilt.
- * Dead entries' texture space is abandoned (the atlas is large enough that
- * texture exhaustion is practically unreachable before hash degradation).
+ * Must be called at the top of the panel render path (before any geometry or
+ * command recording for the frame); it fences the device idle, so tearing down
+ * the in-use image is safe only there. @pc is currently unused (a full rebuild
+ * needs no live-set walk) but retained for API stability.
  *
- * Returns true if compaction was performed, false if skipped (load below
- * threshold or prerequisites not met).
+ * Returns true if a rebuild was performed, false if skipped.
  */
 bool typio_text_atlas_compact(struct PanelRenderCtx *pc);
+
+/*
+ * Diagnostics snapshot for the glyph/font layer. Lets the host correlate panel
+ * stalls with atlas saturation, rebuild churn, and fallback-resolution cost.
+ */
+typedef struct TypioTextShaperDiag {
+    uint32_t atlas_live;          /* occupied hash slots right now             */
+    uint32_t atlas_slot_capacity; /* total hash slots                          */
+    uint32_t atlas_shelf_y;       /* packer vertical fill, physical px         */
+    uint32_t atlas_dim;           /* atlas side length, physical px            */
+    bool     atlas_packer_full;   /* image saturated, awaiting reclaim         */
+    unsigned long long atlas_rebuilds;     /* cumulative reclaim count          */
+    unsigned long long glyphs_rasterized;  /* cumulative FT_Load_Glyph inserts  */
+    unsigned long long fb_resolve_hits;    /* per-codepoint memo hits           */
+    unsigned long long fb_resolve_misses;  /* FcFontSort runs (memo misses)     */
+} TypioTextShaperDiag;
+
+/* Fill @out with the current diagnostics counters. */
+void typio_text_shaper_get_diag(TypioTextShaperDiag *out);
+
+/* Emit a one-line debug log of the diagnostics, prefixed with @tag. */
+void typio_text_shaper_log_diag(const char *tag);
 
 /*
  * Record a shaped text run into a flux canvas as a tinted coverage blit.

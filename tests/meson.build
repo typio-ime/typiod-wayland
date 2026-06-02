@@ -117,13 +117,3 @@ test_glyph_pack = executable('test_glyph_pack',
     dependencies: libtypio_dep,
 )
 test('glyph_pack', test_glyph_pack)
-
-fontconfig_test_dep = dependency('fontconfig', required: false)
-if fontconfig_test_dep.found()
-    test_fallback_cache = executable('test_fallback_cache',
-        ['test_fallback_cache.c', '../src/ui/panel/fallback_cache.c'],
-        include_directories: wayland_test_inc,
-        dependencies: [libtypio_dep, fontconfig_test_dep],
-    )
-    test('fallback_cache', test_fallback_cache)
-endif

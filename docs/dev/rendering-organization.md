@@ -34,7 +34,7 @@ Lower layers must not call back into frontend policy.
 | Paint recording | Geometry to drawing commands | Surface creation, acquire/present, retries, owner policy | `src/ui/panel/paint.*` |
 | Presentation backend | Wayland surface role, scale/output tracking, swapchain, frame lifecycle, stall recovery | What to draw, who owns the Panel | `src/ui/panel/surface.*` |
 | Render device | Process-wide graphics device and backend bootstrap | Panel content, layout, frontend state | `src/ui/panel/device.*` |
-| Text shaping backend | Font lookup, shaping, glyph atlas, backend-specific text fill | Candidate/indicator/voice policy | `src/ui/panel/text_shaper.*`, `src/ui/panel/fallback_cache.*`, `src/ui/panel/glyph_pack.*` |
+| Text shaping backend | Font lookup, shaping, glyph atlas, backend-specific text fill | Candidate/indicator/voice policy | `src/ui/panel/text_shaper.*` (orchestrator) over `font_resolve.*`, `font_cache.*`, `glyph_atlas.*`, `glyph_upload.*`, `glyph_pack.*` |
 | Disabled-backend stub | API compatibility when the graphics backend is unavailable | Any real rendering behavior | `src/ui/panel/stub.c` |
 
 ## Directory standard
@@ -83,7 +83,12 @@ Keep the subroles clear:
 | `panel.*` | Orchestrates Panel content, theme, geometry, visible state, and the surface API. No frontend owner arbitration. |
 | `surface.*` | Owns the protocol surface and presentation lifecycle. Does not decide what content means. |
 | `device.*` | Owns backend device creation and sharing. Does not know about Panel content. |
-| `text_shaper.*` | Owns shaping, glyph atlas, and backend-specific text fill. Does not know about owners or input sessions. |
+| `text_shaper.*` | Orchestrates shaping + draw over the font/glyph modules below; owns the `TypioTextShape` and the panel-facing atlas facade. Does not know about owners or input sessions. |
+| `font_resolve.*` | Fontconfig: descriptor parse, family→file, per-codepoint fallback. One Fontconfig resolution per key, then cached. |
+| `font_cache.*` | `FT_Face` + `hb_font_t` object cache, keyed `(path, size, weight)` with a monotonic `font_id`. |
+| `glyph_atlas.*` | Shared R8 coverage texture, the `(font_id, glyph_id)` hash table, and atlas reclamation. |
+| `glyph_upload.*` | Persistent Vulkan staging context for glyph sub-region uploads. |
+| `glyph_pack.*` | Skyline shelf packer (pure, unit-tested). |
 | `theme.*` | Visual palette defaults and detection only. |
 | `stub.c` | Mirrors the public Panel API for no-backend builds. |
 
@@ -156,9 +161,12 @@ src/ui/
     panel.*
     surface.*
     device.*
-    text_shaper.*
-    fallback_cache.*
-    glyph_pack.*
+    text_shaper.*         shaping + draw orchestrator
+    font_resolve.*        fontconfig resolution + fallback memo
+    font_cache.*          FT_Face + hb_font objects
+    glyph_atlas.*         coverage texture + reclamation
+    glyph_upload.*        Vulkan staging context
+    glyph_pack.*          skyline packer
     theme.*
     stub.c
 ```

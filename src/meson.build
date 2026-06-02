@@ -87,8 +87,11 @@ if enable_wayland
             'ui/panel/layout.c',
             'ui/panel/paint.c',
             'ui/panel/text_shaper.c',
+            'ui/panel/glyph_atlas.c',
+            'ui/panel/glyph_upload.c',
+            'ui/panel/font_cache.c',
+            'ui/panel/font_resolve.c',
             'ui/panel/device.c',
-            'ui/panel/fallback_cache.c',
             'ui/panel/glyph_pack.c',
             'ui/panel/theme.c',
         )

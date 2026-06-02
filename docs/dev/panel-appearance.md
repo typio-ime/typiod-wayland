@@ -33,9 +33,11 @@ sub-rect, so the colour (normal / muted / selection) is a **draw-time tint**
 GPU upload happens during candidate navigation. Solid fills (background, border,
 selection) use premultiplied RGBA via `flux_color_rgba_premul`.
 
-The atlas hash table is automatically compacted when its load exceeds 75 %
-([ADR-0019](../adr/0019-atlas-hash-compaction.md)), preventing lookup degradation
-during extended CJK input sessions.
+The glyph atlas reclaims itself — a wholesale rebuild when the hash load exceeds
+75 % or the shelf packer exhausts the texture
+([ADR-0020](../adr/0020-atlas-reclamation-and-glyph-layer-modularization.md)),
+so neither lookup degradation nor texture saturation accumulates during extended
+CJK input sessions.
 
 ---
 
