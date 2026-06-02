@@ -2,10 +2,10 @@
  * @file candidate_guard.c
  * @brief Host-managed candidate selection (ADR-0012).
  *
- * When an engine publishes a composition with host_managed_selection = true,
- * the host intercepts navigation and selection keys before they reach
- * process_key. The host manages the selected index locally and calls back
- * via commit_candidate when the user makes a selection.
+ * When an engine publishes a composition with host-managed-selection flags set,
+ * the host intercepts the corresponding navigation and selection keys before
+ * they reach process_key. The host manages the selected index locally and
+ * calls back via commit_candidate when the user makes a selection.
  */
 
 #include "candidate_guard.h"
@@ -27,6 +27,28 @@ bool typio_wl_candidate_guard_is_navigation_keysym(uint32_t keysym) {
     }
 }
 
+TypioWlHostSelCategory typio_wl_host_selection_category(TypioWlHostSelKey sel) {
+    switch (sel) {
+    case TYPIO_WL_HOST_SEL_NAV_UP:
+    case TYPIO_WL_HOST_SEL_NAV_DOWN:
+        return TYPIO_WL_HOST_SEL_CATEGORY_NAVIGATE;
+    case TYPIO_WL_HOST_SEL_COMMIT_SELECTED:
+        return TYPIO_WL_HOST_SEL_CATEGORY_COMMIT;
+    case TYPIO_WL_HOST_SEL_COMMIT_INDEX_1:
+    case TYPIO_WL_HOST_SEL_COMMIT_INDEX_2:
+    case TYPIO_WL_HOST_SEL_COMMIT_INDEX_3:
+    case TYPIO_WL_HOST_SEL_COMMIT_INDEX_4:
+    case TYPIO_WL_HOST_SEL_COMMIT_INDEX_5:
+    case TYPIO_WL_HOST_SEL_COMMIT_INDEX_6:
+    case TYPIO_WL_HOST_SEL_COMMIT_INDEX_7:
+    case TYPIO_WL_HOST_SEL_COMMIT_INDEX_8:
+    case TYPIO_WL_HOST_SEL_COMMIT_INDEX_9:
+        return TYPIO_WL_HOST_SEL_CATEGORY_INDEX_PICK;
+    default:
+        return TYPIO_WL_HOST_SEL_CATEGORY_NONE;
+    }
+}
+
 bool typio_wl_candidate_guard_should_consume(TypioWlSession *session,
                                              uint32_t keysym) {
     if (!session)
@@ -35,10 +57,25 @@ bool typio_wl_candidate_guard_should_consume(TypioWlSession *session,
     if (session->last_candidate_count == 0)
         return false;
 
-    if (session->last_host_managed_selection)
-        return typio_wl_host_selection_keysym(keysym) != TYPIO_WL_HOST_SEL_NONE;
+    uint32_t flags = session->last_host_managed_selection;
+    if (flags == 0)
+        return typio_wl_candidate_guard_is_navigation_keysym(keysym);
 
-    return typio_wl_candidate_guard_is_navigation_keysym(keysym);
+    TypioWlHostSelKey sel = typio_wl_host_selection_keysym(keysym);
+    if (sel == TYPIO_WL_HOST_SEL_NONE)
+        return false;
+
+    TypioWlHostSelCategory cat = typio_wl_host_selection_category(sel);
+    switch (cat) {
+    case TYPIO_WL_HOST_SEL_CATEGORY_NAVIGATE:
+        return (flags & TYPIO_HOST_SEL_NAVIGATE) != 0;
+    case TYPIO_WL_HOST_SEL_CATEGORY_COMMIT:
+        return (flags & TYPIO_HOST_SEL_COMMIT) != 0;
+    case TYPIO_WL_HOST_SEL_CATEGORY_INDEX_PICK:
+        return (flags & TYPIO_HOST_SEL_INDEX_PICK) != 0;
+    default:
+        return false;
+    }
 }
 
 TypioWlHostSelKey typio_wl_host_selection_keysym(uint32_t keysym) {

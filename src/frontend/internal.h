@@ -180,7 +180,7 @@ struct TypioWlSession {
      * this rather than querying the input context. */
     size_t last_candidate_count;
     int    last_candidate_selected;
-    bool   last_host_managed_selection;
+    uint32_t last_host_managed_selection;
 
     /* Heap-owned deep copy of the latest composition's candidate list. The
      * libtypio borrowed pointers are only valid inside the callback, so we

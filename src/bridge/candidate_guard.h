@@ -33,11 +33,20 @@ typedef enum {
     TYPIO_WL_HOST_SEL_COMMIT_INDEX_9,
 } TypioWlHostSelKey;
 
+/* Classification of a keysym into a host-managed selection category. */
+typedef enum {
+    TYPIO_WL_HOST_SEL_CATEGORY_NONE,
+    TYPIO_WL_HOST_SEL_CATEGORY_NAVIGATE,
+    TYPIO_WL_HOST_SEL_CATEGORY_COMMIT,
+    TYPIO_WL_HOST_SEL_CATEGORY_INDEX_PICK,
+} TypioWlHostSelCategory;
+
 bool typio_wl_candidate_guard_is_navigation_keysym(uint32_t keysym);
 bool typio_wl_candidate_guard_should_consume(struct TypioWlSession *session,
                                              uint32_t keysym);
 
 TypioWlHostSelKey typio_wl_host_selection_keysym(uint32_t keysym);
+TypioWlHostSelCategory typio_wl_host_selection_category(TypioWlHostSelKey sel);
 int typio_wl_host_selection_resolve(TypioWlHostSelKey sel,
                                     int current_selected,
                                     size_t candidate_count);

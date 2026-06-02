@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-06-02
+
+### Changed
+
+- **`candidate_guard` now respects per-capability flags (ADR-0012).**
+  `typio_wl_candidate_guard_should_consume` classifies each keysym into
+  Navigate / Commit / IndexPick categories and checks the corresponding
+  bit in `session->last_host_managed_selection` instead of the old coarse
+  `bool`. This lets engines retain control over digits and space while
+  still delegating arrow-key navigation and enter/space commit to the host.
+- `last_host_managed_selection` field on `TypioWlSession` widened from
+  `bool` to `uint32_t`.
+
 ## [0.1.0] — 2026-06-02
 
 ### Added

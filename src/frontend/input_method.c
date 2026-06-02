@@ -743,7 +743,7 @@ static void on_composition_callback([[maybe_unused]] TypioInputContext *ctx,
     } else {
         session->last_candidate_count = 0;
         session->last_candidate_selected = -1;
-        session->last_host_managed_selection = false;
+        session->last_host_managed_selection = TYPIO_HOST_SEL_NONE;
     }
     candidate_snapshot_assign(&session->candidate_snapshot, composition);
 
