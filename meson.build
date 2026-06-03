@@ -1,5 +1,5 @@
 project('typio-wayland', 'c',
-    version: '0.1.7',
+    version: '0.1.8',
     default_options: [
         'c_std=c23',
         'warning_level=2',
@@ -142,27 +142,13 @@ if build_tests
 endif
 
 # ── Data files ─────────────────────────────────────────────────────────────
-desktop_conf = configuration_data()
-desktop_conf.set('TYPIO_HOST_DIR', prefix / get_option('libexecdir') / 'typio')
+service_conf = configuration_data()
+service_conf.set('TYPIO_HOST_DIR', prefix / get_option('libexecdir') / 'typio')
 
-configure_file(
-    input: 'data/applications/typio.desktop.in',
-    output: 'typio.desktop',
-    configuration: desktop_conf,
-    install: true,
-    install_dir: datadir / 'applications',
-)
-configure_file(
-    input: 'data/autostart/typio.desktop.in',
-    output: 'typio-autostart.desktop',
-    configuration: desktop_conf,
-    install: true,
-    install_dir: get_option('sysconfdir') / 'xdg' / 'autostart',
-)
 configure_file(
     input: 'data/typio.service.in',
     output: 'typio.service',
-    configuration: desktop_conf,
+    configuration: service_conf,
     install: true,
     install_dir: prefix / libdir / 'systemd' / 'user',
 )

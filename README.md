@@ -51,6 +51,13 @@ typio --list                   # list discovered engines
 typio --verbose                # run with debug logging
 ```
 
+Installed packages start the daemon through the systemd user service:
+
+```sh
+systemctl --user enable --now typio.service
+journalctl --user -u typio -f
+```
+
 Engines are discovered from `~/.local/lib/typio/engines` and
 `/usr/local/lib/typio/engines`. Build the [basic engine](../typio-engine-basic)
 with `cargo build --release` and copy the `.so`

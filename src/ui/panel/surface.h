@@ -36,17 +36,14 @@ TypioPanelSurface *panel_surface_create(TypioWlFrontend *frontend, TypioPanel *o
 void panel_surface_destroy(TypioPanelSurface *s);
 
 bool panel_surface_is_available(const TypioPanelSurface *s);
-bool panel_surface_present_retry_pending(const TypioPanelSurface *s);
 bool panel_surface_fx_ready(const TypioPanelSurface *s);
 
 /* Logical-to-physical scale ratio resolved from the surface's scale signals. */
 float panel_surface_scale(const TypioPanelSurface *s);
 
-/* Clear the pending-retry flag at the start of an update cycle. */
-void panel_surface_reset_retry(TypioPanelSurface *s);
-
 /* Size the swapchain to `geom`, set the viewport/buffer-scale, and present one
- * frame. On OK the retire ring advances; on RETRY the retry flag is armed. */
+ * frame. On OK the retire ring advances; on RETRY the caller keeps its update
+ * pending and schedules a later attempt. */
 PanelPresentResult panel_surface_present(TypioPanelSurface *s,
                                          const PanelGeometry *geom, int selected);
 

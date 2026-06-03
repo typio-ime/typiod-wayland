@@ -111,7 +111,6 @@ struct TypioPanelSurface {
 
     /* Present stall recovery (lock/suspend). */
     int  present_timeout_streak;
-    bool present_retry;
 
     /* Frame-retire ring. `present_epoch` advances on every successful present;
      * `retire[epoch % depth]` holds geometries/layouts that were live during
@@ -574,15 +573,10 @@ PanelPresentResult panel_surface_present(TypioPanelSurface *s,
         retire_slot_drain(&s->retire[s->present_epoch % PANEL_RETIRE_DEPTH]);
     } else if (pres == PANEL_PRESENT_RETRY) {
         /* Compositor isn't releasing swapchain images yet (display asleep or
-         * surface occluded after a lock/suspend). The caller re-presents so the
-         * visible highlight catches up once presentation resumes. */
-        s->present_retry = true;
+         * surface occluded after a lock/suspend). The caller keeps the update
+         * pending and re-presents later so the visible highlight catches up. */
     }
     return pres;
-}
-
-void panel_surface_reset_retry(TypioPanelSurface *s) {
-    if (s) s->present_retry = false;
 }
 
 void panel_surface_hide(TypioPanelSurface *s) {
@@ -591,15 +585,10 @@ void panel_surface_hide(TypioPanelSurface *s) {
      * later show only needs a present, not a swapchain rebuild. */
     wl_surface_attach(s->surface, nullptr, 0, 0);
     wl_surface_commit(s->surface);
-    s->present_retry = false;
 }
 
 bool panel_surface_is_available(const TypioPanelSurface *s) {
     return s && s->surface && s->popup_surface;
-}
-
-bool panel_surface_present_retry_pending(const TypioPanelSurface *s) {
-    return s && s->present_retry;
 }
 
 bool panel_surface_fx_ready(const TypioPanelSurface *s) {

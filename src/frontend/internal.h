@@ -14,7 +14,7 @@
 #include "lifecycle.h"
 #include "repeat.h"
 #include "identity.h"
-#include "content.h"
+#include "panel.h"
 #include "resume.h"
 #include "startup.h"
 #include "bridge.h"
@@ -366,8 +366,8 @@ int typio_wl_frontend_get_config_reload_fd(TypioWlFrontend *frontend);
 void typio_wl_frontend_dispatch_config_reload(TypioWlFrontend *frontend);
 
 /* Panel coordinator: owner arbitration and position-anchor policy. */
-bool typio_wl_panel_coordinator_show_candidates(TypioWlFrontend *frontend,
-                                                 TypioInputContext *ctx);
+TypioPanelUpdateResult typio_wl_panel_coordinator_show_candidates(TypioWlFrontend *frontend,
+                                                                  TypioInputContext *ctx);
 bool typio_wl_panel_coordinator_show_status(TypioWlFrontend *frontend,
                                              TypioWlUiOwner owner,
                                              const char *text);

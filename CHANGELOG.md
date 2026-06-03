@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8] — 2026-06-03
+
+### Fixed
+
+- **Candidate Panel could stay stale after a present RETRY.** Removed the
+  persistent `present_retry` latch that let the event loop skip every future
+  Panel flush after one stalled present. Panel updates now return `OK` /
+  `RETRY` / `FAIL`, and the frontend keeps `panel_update_pending` armed only
+  from the current result. (ADR-0022)
+
+### Changed
+
+- **Daemon startup is systemd-user-only.** Removed installed `.desktop`
+  launch/autostart entries; packagers should enable `typio.service` so the
+  daemon has one supervised process, restart policy, duplicate-start
+  protection, and journal log stream. (ADR-0021)
+
 ## [0.1.7] — 2026-06-02
 
 ### Fixed

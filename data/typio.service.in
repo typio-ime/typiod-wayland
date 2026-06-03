@@ -11,6 +11,9 @@ Type=simple
 ExecStart=@TYPIO_HOST_DIR@/typio
 Restart=on-failure
 RestartSec=2s
+SyslogIdentifier=typio
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=graphical-session.target

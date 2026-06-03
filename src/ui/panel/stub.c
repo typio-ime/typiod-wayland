@@ -21,21 +21,17 @@ bool typio_panel_is_available(TypioPanel *panel) {
     return false;
 }
 
-bool typio_panel_present_retry_pending(TypioPanel *panel) {
-    (void)panel;
-    return false;
-}
-
-bool typio_panel_update_content(TypioPanel *panel, const TypioPanelContent *content) {
+TypioPanelUpdateResult typio_panel_update_content(TypioPanel *panel,
+                                                  const TypioPanelContent *content) {
     (void)panel;
     (void)content;
-    return false;
+    return TYPIO_PANEL_UPDATE_FAIL;
 }
 
-bool typio_panel_update(TypioPanel *panel, TypioInputContext *ctx) {
+TypioPanelUpdateResult typio_panel_update(TypioPanel *panel, TypioInputContext *ctx) {
     (void)panel;
     (void)ctx;
-    return false;
+    return TYPIO_PANEL_UPDATE_FAIL;
 }
 
 void typio_panel_hide(TypioPanel *panel) {

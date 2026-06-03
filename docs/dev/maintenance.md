@@ -313,6 +313,13 @@ chain:
   the lag returned after each. Fixed by a **grow-only, quantised swapchain
   buffer** cropped to content via `wp_viewport_set_source` — steady-state paging
   rebuilds nothing.
+- **Persistent retry latch** — a later regression in ADR-0015's retry deferral
+  path ([ADR-0022](../adr/0022-panel-retry-result-owned-by-update.md)). A single
+  `PANEL_PRESENT_RETRY` could set surface state that made the event loop skip
+  every future Panel flush, so `panel_render()` never ran again to clear the
+  flag. Fixed by removing durable retry state from `TypioPanelSurface`: retry is
+  now one update result (`TYPIO_PANEL_UPDATE_RETRY`), and the frontend keeps
+  `panel_update_pending` armed with a 16 ms retry poll cadence.
 - **GPU memory (~192 MB)** looked alarming but was a *bounded plateau* of
   flux's 64 MiB pool blocks (`/proc/<pid>/fdinfo` `drm-total-system0` stayed
   flat under load), driven by the per-run texture churn — not a leak and not

@@ -14,6 +14,8 @@ Decisions about the framework core (engine ABI, composition contract) live in th
 > carries a scope-correction block. The misdiagnosis trail is kept deliberately:
 > it is the record that stops the next reader repeating it. See
 > [`docs/dev/maintenance.md`](../dev/maintenance.md) for the condensed lesson.
+> A later retry-latch regression in ADR-0015's deferral path is recorded in
+> ADR-0022.
 
 | ADR | Title | Status |
 |-----|-------|--------|
@@ -37,6 +39,8 @@ Decisions about the framework core (engine ABI, composition contract) live in th
 | [ADR-0018](0018-focus-transition-classification.md) | Focus-transition classification and re-activation | Accepted |
 | [ADR-0019](0019-atlas-hash-compaction.md) | Atlas hash-table compaction for sustained CJK input | Superseded by ADR-0020 |
 | [ADR-0020](0020-atlas-reclamation-and-glyph-layer-modularization.md) | Atlas texture reclamation and glyph-layer modularization | Accepted (supersedes ADR-0019) |
+| [ADR-0021](0021-systemd-user-service-daemon-lifecycle.md) | systemd user service for daemon lifecycle | Accepted |
+| [ADR-0022](0022-panel-retry-result-owned-by-update.md) | Panel retry result owned by update | Accepted (amends ADR-0015) |
 
 ## Looking for something else?
 

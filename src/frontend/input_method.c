@@ -792,17 +792,15 @@ static void update_wayland_text_ui(TypioWlSession *session, TypioInputContext *c
     /* Keep the panel synchronous so candidate navigation updates the visible
      * highlight immediately. When the preedit is unchanged, skip the protocol
      * round-trip to the focused application and only refresh the panel. */
-    bool panel_ok = typio_wl_panel_coordinator_show_candidates(session->frontend, ctx);
+    TypioPanelUpdateResult panel_result =
+        typio_wl_panel_coordinator_show_candidates(session->frontend, ctx);
     panel_done_ms = typio_wl_monotonic_ms();
 
     session->frontend->panel_update_pending = false;
-    /* If the panel could not present because the compositor is not yet
-     * releasing swapchain buffers (display asleep / occluded after a
-     * lock or suspend), re-arm the flush so the event loop keeps retrying
-     * until the visible highlight catches up with the committed selection. */
-    if (typio_panel_present_retry_pending(session->frontend->panel)) {
+    if (panel_result == TYPIO_PANEL_UPDATE_RETRY) {
         session->frontend->panel_update_pending = true;
-    } else if (panel_ok && session->candidate_snapshot.count > 0) {
+    } else if (panel_result == TYPIO_PANEL_UPDATE_OK &&
+               session->candidate_snapshot.count > 0) {
         typio_wl_panel_coordinator_mark_anchor_ready(session->frontend,
                                                      "candidate_present");
     }

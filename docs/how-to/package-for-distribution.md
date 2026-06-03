@@ -39,9 +39,7 @@ meson setup build --prefix=/usr --buildtype=release
 | File | Destination | Purpose |
 |------|-------------|---------|
 | `typio` | `<prefix>/libexec/typio/` | Main daemon binary |
-| `typio.desktop` | `<datadir>/applications/` | Desktop entry for application launchers |
-| `typio-autostart.desktop` | `<prefix>/etc/xdg/autostart/` | Autostart entry for desktop sessions |
-| `typio.service` | `<prefix>/<libdir>/systemd/user/` | systemd user service unit |
+| `typio.service` | `<prefix>/<libdir>/systemd/user/` | systemd user service unit that runs the daemon |
 | `hicolor/*` | `<datadir>/icons/` | Status and tray icons |
 | `core.toml.example` | `<datadir>/typio/` | Example core configuration |
 | `wayland.toml.example` | `<datadir>/typio/` | Example Wayland frontend configuration |
@@ -103,7 +101,16 @@ systemctl --user enable typio.service
 systemctl --user start typio.service
 ```
 
-Or rely on the XDG autostart desktop file if the session supports it.
+Follow daemon logs through the user journal:
+
+```bash
+journalctl --user -u typio -f
+```
+
+Do not package a desktop entry that executes `typio` directly. The daemon is
+session infrastructure: direct desktop launch loses service supervision, restart
+policy, duplicate-start protection, and a stable journal unit for logs. For the
+decision background see [ADR-0021](../adr/0021-systemd-user-service-daemon-lifecycle.md).
 
 ## Packaging checklist
 

@@ -175,9 +175,9 @@ static bool queue_positioned_ui(TypioWlFrontend *frontend,
     return true;
 }
 
-bool typio_wl_panel_coordinator_show_candidates(TypioWlFrontend *frontend,
-                                                 TypioInputContext *ctx) {
-    if (!frontend || !frontend->panel) return false;
+TypioPanelUpdateResult typio_wl_panel_coordinator_show_candidates(TypioWlFrontend *frontend,
+                                                                  TypioInputContext *ctx) {
+    if (!frontend || !frontend->panel) return TYPIO_PANEL_UPDATE_FAIL;
 
     size_t candidate_count = 0;
     if (frontend->session) {
@@ -186,7 +186,7 @@ bool typio_wl_panel_coordinator_show_candidates(TypioWlFrontend *frontend,
 
     if (candidate_count == 0) {
         typio_wl_panel_coordinator_hide(frontend, TYPIO_WL_UI_OWNER_CANDIDATE);
-        return true;
+        return TYPIO_PANEL_UPDATE_OK;
     }
 
     typio_wl_panel_coordinator_cancel_pending(frontend);

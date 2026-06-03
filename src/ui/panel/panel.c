@@ -159,10 +159,10 @@ static void panel_do_hide(TypioPanel *panel) {
 
 /* ── Core render ─────────────────────────────────────────────────────── */
 
-static bool panel_render(TypioPanel *panel,
-                          const TypioCandidateList *cands,
-                          const char *preedit_text,
-                          const char *mode_label) {
+static TypioPanelUpdateResult panel_render(TypioPanel *panel,
+                                           const TypioCandidateList *cands,
+                                           const char *preedit_text,
+                                           const char *mode_label) {
     const PanelConfig  *cfg;
     TypioPanelPalette   palette;
     uint64_t            pal_sig;
@@ -173,12 +173,10 @@ static bool panel_render(TypioPanel *panel,
     const char         *delta_name = "unknown";
     static const TypioCandidateList empty_cands = {};
 
-    if (!panel || !panel->surface) return false;
+    if (!panel || !panel->surface) return TYPIO_PANEL_UPDATE_FAIL;
     if (!cands) {
         cands = &empty_cands;
     }
-
-    panel_surface_reset_retry(panel->surface);
 
     t0  = typio_wl_monotonic_ms();
     cfg = get_config(panel);
@@ -195,12 +193,12 @@ static bool panel_render(TypioPanel *panel,
 
     if (delta == PANEL_DELTA_SELECTION && new_selected == panel->selected &&
         panel->visible) {
-        return true;
+        return TYPIO_PANEL_UPDATE_OK;
     }
 
     switch (delta) {
     case PANEL_DELTA_NONE:
-        return true;
+        return TYPIO_PANEL_UPDATE_OK;
 
     case PANEL_DELTA_SELECTION:
         delta_name = "selection";
@@ -241,7 +239,7 @@ static bool panel_render(TypioPanel *panel,
                                                           cfg, &palette, scale);
         if (!new_geom) {
             typio_log_warning("Panel: geometry computation failed");
-            return false;
+            return TYPIO_PANEL_UPDATE_FAIL;
         }
         panel_surface_retire_geometry(panel->surface, panel->geom);
         panel->geom = new_geom;
@@ -249,27 +247,26 @@ static bool panel_render(TypioPanel *panel,
 
     t_geometry = typio_wl_monotonic_ms();
 
-    if (!panel->geom) return false;
+    if (!panel->geom) return TYPIO_PANEL_UPDATE_FAIL;
 
     PanelPresentResult pres = panel_surface_present(panel->surface, panel->geom, new_selected);
     t_present = typio_wl_monotonic_ms();
 
-    bool ok = (pres == PANEL_PRESENT_OK);
     if (pres == PANEL_PRESENT_OK) {
         panel->selected = new_selected;
         panel->visible  = true;
     } else if (pres == PANEL_PRESENT_RETRY) {
         /* Compositor isn't releasing swapchain images yet (display asleep or
-         * surface occluded after a lock/suspend). The retry flag is armed on
-         * the surface; selected/visible are left unchanged so the re-present
-         * renders this exact state once presentation resumes. */
+         * surface occluded after a lock/suspend). selected/visible are left
+         * unchanged; the frontend keeps the update pending and re-presents the
+         * newest candidate state once presentation resumes. */
     } else {
         typio_log_warning("Panel: present failed");
     }
 
     t1 = typio_wl_monotonic_ms();
     uint64_t total_ms = t1 - t0;
-    if (ok && total_ms >= PANEL_SLOW_RENDER_MS) {
+    if (pres == PANEL_PRESENT_OK && total_ms >= PANEL_SLOW_RENDER_MS) {
         typio_log_debug("Panel slow render: %" PRIu64 "ms "
                         "(classify=%" PRIu64 " geometry=%" PRIu64 " present=%" PRIu64 ") "
                         "delta=%s candidates=%zu selected=%d "
@@ -287,7 +284,9 @@ static bool panel_render(TypioPanel *panel,
         typio_text_shaper_log_diag("slow-render");
     }
 
-    return ok;
+    if (pres == PANEL_PRESENT_OK) return TYPIO_PANEL_UPDATE_OK;
+    if (pres == PANEL_PRESENT_RETRY) return TYPIO_PANEL_UPDATE_RETRY;
+    return TYPIO_PANEL_UPDATE_FAIL;
 }
 
 void typio_panel_refresh(TypioPanel *panel) {
@@ -331,9 +330,9 @@ void typio_panel_destroy(TypioPanel *panel) {
     free(panel);
 }
 
-bool typio_panel_update_content(TypioPanel *panel,
-                                const TypioPanelContent *content) {
-    if (!panel || !content) return false;
+TypioPanelUpdateResult typio_panel_update_content(TypioPanel *panel,
+                                                  const TypioPanelContent *content) {
+    if (!panel || !content) return TYPIO_PANEL_UPDATE_FAIL;
 
     /* Update persistent status only when the caller explicitly sets it.
      * InputContext-driven updates leave status.message == nullptr so they do
@@ -354,7 +353,7 @@ bool typio_panel_update_content(TypioPanel *panel,
     /* No candidates and no persistent status → hide. */
     if ((!cands || cands->count == 0) && (!panel->status_text || !panel->status_text[0])) {
         panel_do_hide(panel);
-        return true;
+        return TYPIO_PANEL_UPDATE_OK;
     }
 
     /* When the IME has no candidates, surface the persistent voice-status text
@@ -366,17 +365,17 @@ bool typio_panel_update_content(TypioPanel *panel,
     }
 
     char *mode_label = build_mode_label(panel);
-    bool ok = panel_render(panel, cands, preedit, mode_label);
+    TypioPanelUpdateResult result = panel_render(panel, cands, preedit, mode_label);
     free(mode_label);
-    return ok;
+    return result;
 }
 
 /* Convenience wrapper: build a content descriptor from the input context plus
  * the host-side candidate snapshot. Candidates are no longer exposed via the
  * libtypio input-context surface; the composition callback in input_method.c
  * maintains a deep copy on the session. */
-bool typio_panel_update(TypioPanel *panel, TypioInputContext *ctx) {
-    if (!panel) return false;
+TypioPanelUpdateResult typio_panel_update(TypioPanel *panel, TypioInputContext *ctx) {
+    if (!panel) return TYPIO_PANEL_UPDATE_FAIL;
 
     TypioPanelContent content;
     typio_panel_content_init(&content);
@@ -395,10 +394,6 @@ void typio_panel_hide(TypioPanel *panel) {
 
 bool typio_panel_is_available(TypioPanel *panel) {
     return panel && panel_surface_is_available(panel->surface);
-}
-
-bool typio_panel_present_retry_pending(TypioPanel *panel) {
-    return panel && panel_surface_present_retry_pending(panel->surface);
 }
 
 void typio_panel_invalidate_config(TypioPanel *panel) {
@@ -431,7 +426,7 @@ bool typio_panel_show_status(TypioPanel *panel, const char *text) {
         content.status.active  = true;
         content.status.message = text;
     }
-    return typio_panel_update_content(panel, &content);
+    return typio_panel_update_content(panel, &content) == TYPIO_PANEL_UPDATE_OK;
 }
 
 void typio_panel_hide_status(TypioPanel *panel) {

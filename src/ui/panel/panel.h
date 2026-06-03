@@ -24,6 +24,12 @@ typedef struct TypioInputContext TypioInputContext;
 typedef struct TypioWlFrontend TypioWlFrontend;
 typedef struct TypioPanel TypioPanel;
 
+typedef enum {
+    TYPIO_PANEL_UPDATE_OK = 0,
+    TYPIO_PANEL_UPDATE_RETRY,
+    TYPIO_PANEL_UPDATE_FAIL,
+} TypioPanelUpdateResult;
+
 /* Create the panel: its wl_surface, input-popup surface, HiDPI helpers, and
  * shaper/layout caches. Returns NULL if the compositor or input-method
  * globals are unavailable (Panel disabled) or on allocation failure. */
@@ -33,15 +39,12 @@ void typio_panel_destroy(TypioPanel *panel);
 /* Whether the panel has a usable input-popup surface. */
 bool typio_panel_is_available(TypioPanel *panel);
 
-/* True when a present stalled and the loop should re-present (lock/suspend). */
-bool typio_panel_present_retry_pending(TypioPanel *panel);
-
 /* Primary update path: composite the given content and present one frame. */
-bool typio_panel_update_content(TypioPanel *panel,
-                                const TypioPanelContent *content);
+TypioPanelUpdateResult typio_panel_update_content(TypioPanel *panel,
+                                                  const TypioPanelContent *content);
 
 /* Convenience wrapper for the InputContext-only case (candidates + preedit). */
-bool typio_panel_update(TypioPanel *panel, TypioInputContext *ctx);
+TypioPanelUpdateResult typio_panel_update(TypioPanel *panel, TypioInputContext *ctx);
 
 /* Re-render the current content (called by the surface on a scale/output
  * change). No-op unless the panel is visible. */

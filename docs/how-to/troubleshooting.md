@@ -130,6 +130,21 @@ For the technical background see [Wayland Input Method Protocol — Known limits
 
 ## Debug Logging
 
+Follow the installed daemon logs:
+
+```bash
+journalctl --user -u typio -f
+```
+
+Show recent daemon logs:
+
+```bash
+journalctl --user -u typio --since -10m
+```
+
+Run a foreground debug session when reproducing a problem outside the installed
+service:
+
 ```bash
 typio --verbose
 ```
@@ -146,7 +161,7 @@ Keyboard trace lines include both raw key data and the resolved text character w
 
 Current builds expose two complementary diagnostics surfaces:
 
-- continuous logs through stderr (visible in the terminal when running manually with `--verbose`, or in the compositor's log stream when started via desktop autostart)
+- continuous logs through stderr (captured by `typio.service` in the user journal for installed builds, or visible in the terminal when running manually with `--verbose`)
 - a structured D-Bus `RuntimeState` property on `org.typio.InputMethod1`
 
 Use both. Logs show the event history; `RuntimeState` shows the current frontend health snapshot.

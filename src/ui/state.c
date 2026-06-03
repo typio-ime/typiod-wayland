@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define TYPIO_WL_PANEL_RETRY_POLL_MS 16
+
 TypioWlTextUiPlan typio_wl_text_ui_plan_update(const char *last_preedit_text,
                                                int last_preedit_cursor,
                                                const char *next_preedit_text,
@@ -40,6 +42,16 @@ bool typio_wl_text_ui_should_flush_panel_update(bool panel_update_pending,
                                                 bool has_context,
                                                 bool context_focused) {
     return panel_update_pending && has_session && has_context && context_focused;
+}
+
+int typio_wl_text_ui_panel_retry_poll_timeout_ms(bool panel_update_pending,
+                                                 int current_timeout_ms) {
+    if (!panel_update_pending ||
+        current_timeout_ms <= TYPIO_WL_PANEL_RETRY_POLL_MS) {
+        return current_timeout_ms;
+    }
+
+    return TYPIO_WL_PANEL_RETRY_POLL_MS;
 }
 
 TypioWlPositionedUiPlan typio_wl_positioned_ui_plan(bool pending,

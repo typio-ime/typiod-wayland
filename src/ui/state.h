@@ -29,6 +29,9 @@ bool typio_wl_text_ui_should_flush_panel_update(bool panel_update_pending,
                                                 bool has_context,
                                                 bool context_focused);
 
+int typio_wl_text_ui_panel_retry_poll_timeout_ms(bool panel_update_pending,
+                                                 int current_timeout_ms);
+
 TypioWlPositionedUiPlan typio_wl_positioned_ui_plan(bool pending,
                                                     bool anchor_ready,
                                                     uint64_t since_ms,

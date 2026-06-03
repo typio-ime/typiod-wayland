@@ -49,10 +49,10 @@ CJK input sessions.
   instead of an infinite wait. The healthy on-demand path acquires in <100 μs, so
   this budget is only consumed during a real stall.
 - On `FLUX_ERROR_TIMEOUT`, `panel_surface_present` returns `PANEL_PRESENT_RETRY`:
-  `selected`/`visible` are **not** updated and `present_retry` is set, which
-  re-arms `panel_update_pending` (via
-  `typio_panel_present_retry_pending`) so the loop re-presents the
-  same state until the compositor resumes and the visible highlight catches up.
+  `selected`/`visible` are **not** updated. The retry is propagated as
+  `TYPIO_PANEL_UPDATE_RETRY`; the frontend keeps `panel_update_pending` armed so
+  a later loop tick presents the newest candidate state. Retry is not stored as
+  durable surface state; see [ADR-0022](../adr/0022-panel-retry-result-owned-by-update.md).
 - After `PANEL_PRESENT_RECOVER_STREAK` consecutive timeouts the swapchain is
   rebuilt with `flux_surface_resize` (to its current extent), discarding the
   per-frame semaphores left dangling by the stalled acquires.

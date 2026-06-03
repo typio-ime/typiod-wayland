@@ -90,18 +90,6 @@ static void event_loop_flush_pending_panel(TypioWlFrontend *frontend) {
         return;
     }
 
-    /* If the previous present returned RETRY (compositor not releasing
-     * swapchain images), skip this flush entirely. The panel_update_pending
-     * flag stays armed, so the next flush (once the compositor catches up)
-     * will use the latest candidate state. This prevents the event loop
-     * from blocking on repeated 2ms timeouts during navigation, and lets
-     * it continue processing key events. When the compositor finally
-     * releases an image, the visible highlight jumps directly to the
-     * current selected position — the correct behaviour for input UI. */
-    if (frontend->panel && typio_panel_present_retry_pending(frontend->panel)) {
-        return;
-    }
-
     typio_wl_frontend_watchdog_set_stage(frontend, TYPIO_WL_LOOP_STAGE_PANEL_UPDATE);
     /* Note: panel_update_pending is cleared inside update_wayland_text_ui -> typio_wl_session_flush_ui_update */
     typio_wl_session_flush_ui_update(frontend->session);
@@ -207,6 +195,9 @@ static int event_loop_poll(TypioWlFrontend *frontend,
 
     typio_wl_frontend_watchdog_set_stage(frontend, TYPIO_WL_LOOP_STAGE_POLL);
     int timeout_ms = 100;
+    timeout_ms = typio_wl_text_ui_panel_retry_poll_timeout_ms(
+        frontend->panel_update_pending,
+        timeout_ms);
     if (frontend->virtual_keyboard_state == TYPIO_WL_VK_STATE_NEEDS_KEYMAP &&
         frontend->virtual_keyboard_keymap_deadline_ms > 0) {
         uint64_t now_ms = typio_wl_monotonic_ms();
