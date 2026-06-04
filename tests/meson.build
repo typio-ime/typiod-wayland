@@ -2,12 +2,14 @@
 # typio/ headers + libtypio-core come from libtypio_dep; host internals are
 # pulled in by source + include path.
 #
-# NOTE: many tests depend on the removed TypioEngineManager mock-registration
-# API (typio_engine_manager_register_keyboard / _register_voice / etc.) and
-# the dropped TypioEngineInfo.version / TypioInstanceConfig.default_engine
-# fields. They are commented out here until the daemon adopts the new
-# TypioRegistry plugin-only registration path. Re-enable on a per-test basis
-# once each one is ported.
+# Tests are organised by the subsystem they exercise, mirroring the
+# src/ layout. Several additional tests (test_identity, test_key_route,
+# test_vk_bridge, test_candidate_guard, test_uds_ipc, test_server_app,
+# test_recent_log_dump, test_startup_health) live as source files under
+# the appropriate subdirs but are not yet wired into the build; they
+# depend on the TypioRegistry plugin-only registration path that the
+# daemon has not yet adopted. Re-enable on a per-test basis once each
+# one is ported.
 
 wayland_test_inc = [
     include_directories('../src'),
@@ -21,14 +23,14 @@ wayland_test_inc = [
 ]
 
 test_preedit_format = executable('test_preedit_format',
-    ['test_inline_ui.c', '../src/ui/preedit.c'],
+    ['ui/test_inline_ui.c', '../src/ui/preedit.c'],
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,
 )
 test('preedit_format', test_preedit_format)
 
 test_startup_guard = executable('test_startup_guard',
-    ['test_startup_guard.c', '../src/engine/startup.c',
+    ['engine/test_startup_guard.c', '../src/engine/startup.c',
      '../src/engine/boundary.c'],
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,
@@ -36,91 +38,92 @@ test_startup_guard = executable('test_startup_guard',
 test('startup_guard', test_startup_guard)
 
 test_boundary_bridge = executable('test_boundary_bridge',
-    ['test_boundary_bridge.c', '../src/engine/boundary.c'],
+    ['engine/test_boundary_bridge.c', '../src/engine/boundary.c'],
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,
 )
 test('boundary_bridge', test_boundary_bridge)
 
 test_repeat_guard = executable('test_repeat_guard',
-    ['test_repeat_guard.c', '../src/input/policy/repeat_guard.c'],
+    ['input/policy/test_repeat_guard.c', '../src/input/policy/repeat_guard.c'],
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,
 )
 test('repeat_guard', test_repeat_guard)
 
 test_frontend_aux = executable('test_frontend_aux',
-    ['test_frontend_aux.c', '../src/frontend/frontend_aux.c'],
+    ['frontend/test_frontend_aux.c', '../src/frontend/frontend_aux.c'],
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,
 )
 test('frontend_aux', test_frontend_aux)
 
 test_text_ui_state = executable('test_text_ui_state',
-    ['test_text_ui_state.c', '../src/ui/state.c'],
+    ['ui/test_text_ui_state.c', '../src/ui/state.c'],
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,
 )
 test('text_ui_state', test_text_ui_state)
 
 test_panel_scheduler = executable('test_panel_scheduler',
-    ['test_panel_scheduler.c', '../src/frontend/panel_scheduler.c'],
+    ['frontend/test_panel_scheduler.c', '../src/frontend/panel_scheduler.c'],
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,
 )
 test('panel_scheduler', test_panel_scheduler)
 
 test_shortcut_chord = executable('test_shortcut_chord',
-    ['test_shortcut_chord.c', '../src/input/policy/chords.c'],
+    ['input/policy/test_shortcut_chord.c', '../src/input/policy/chords.c'],
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,
 )
 test('shortcut_chord', test_shortcut_chord)
 
 test_key_arbiter = executable('test_key_arbiter',
-    ['test_key_arbiter.c', '../src/input/wayland/arbiter.c', '../src/input/policy/chords.c',
-     protocol_headers],
+    ['input/wayland/test_key_arbiter.c', '../src/input/wayland/arbiter.c',
+     '../src/input/policy/chords.c', protocol_headers],
     include_directories: [wayland_test_inc, top_inc],
     dependencies: libtypio_dep,
 )
 test('key_arbiter', test_key_arbiter)
 
 test_modifier_policy = executable('test_modifier_policy',
-    ['test_modifier_policy.c', '../src/input/policy/modifiers.c'],
+    ['input/policy/test_modifier_policy.c', '../src/input/policy/modifiers.c'],
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,
 )
 test('modifier_policy', test_modifier_policy)
 
 test_key_tracking = executable('test_key_tracking',
-    ['test_key_tracking.c', '../src/input/policy/tracker.c'],
+    ['input/policy/test_key_tracking.c', '../src/input/policy/tracker.c'],
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,
 )
 test('key_tracking', test_key_tracking)
 
-test_resume_model = executable('test_resume_model', 'test_resume_model.c',
+test_resume_model = executable('test_resume_model',
+    'engine/test_resume_model.c',
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,
 )
 test('resume_model', test_resume_model)
 
 test_session_controller = executable('test_session_controller',
-    ['test_session_controller.c', '../src/engine/session_controller.c'],
+    ['engine/test_session_controller.c', '../src/engine/session_controller.c'],
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,
 )
 test('session_controller', test_session_controller)
 
 test_reconnect_backoff = executable('test_reconnect_backoff',
-    ['test_reconnect_backoff.c', '../src/engine/backoff.c'],
+    ['engine/test_reconnect_backoff.c', '../src/engine/backoff.c'],
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,
 )
 test('reconnect_backoff', test_reconnect_backoff)
 
 test_state_machine_properties = executable('test_state_machine_properties',
-    ['test_state_machine_properties.c',
+    ['engine/test_state_machine_properties.c',
      '../src/engine/session_controller.c',
      '../src/engine/backoff.c'],
     include_directories: wayland_test_inc,
@@ -129,7 +132,7 @@ test_state_machine_properties = executable('test_state_machine_properties',
 test('state_machine_properties', test_state_machine_properties)
 
 test_glyph_pack = executable('test_glyph_pack',
-    ['test_glyph_pack.c', '../src/ui/panel/glyph_pack.c'],
+    ['ui/test_glyph_pack.c', '../src/ui/panel/glyph_pack.c'],
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,
 )
