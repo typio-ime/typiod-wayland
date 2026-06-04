@@ -685,6 +685,12 @@ void typio_tray_sni_emit_signal(TypioTray *tray, const char *signal_name) {
     }
 
     dbus_connection_send(tray->conn, sig, nullptr);
+    /* The tray's FD is only woken by incoming traffic from the SNI host, so
+     * the connection's outgoing queue is otherwise never drained. Force a
+     * flush after every signal so the host actually sees the NewIcon /
+     * NewStatus / NewToolTip notifications; without this, the icon (and
+     * any subsequent state change) silently fails to update. */
+    dbus_connection_flush(tray->conn);
     dbus_message_unref(sig);
 }
 
@@ -762,6 +768,7 @@ void typio_tray_update_engine(TypioTray *tray, const char *engine_name,
                                      DBUS_TYPE_INT32, &parent,
                                      DBUS_TYPE_INVALID);
             dbus_connection_send(tray->conn, sig, nullptr);
+            dbus_connection_flush(tray->conn);
             dbus_message_unref(sig);
         }
     }
