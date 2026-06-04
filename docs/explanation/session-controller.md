@@ -96,7 +96,7 @@ typedef enum {
 } TypioWlGrabResourceState;
 ```
 
-The grab resource state merges the keyboard grab object presence with the virtual-keyboard keymap readiness from `src/input/bridge.c`. This is one resource with one state, not a phase plus a separate vk state machine.
+The grab resource state merges the keyboard grab object presence with the virtual-keyboard keymap readiness from `src/input/wayland/bridge.c`. This is one resource with one state, not a phase plus a separate vk state machine.
 
 ### Effects
 
@@ -178,7 +178,7 @@ A future liveness probe may be added as a new fact source feeding into `reduce()
 | `src/engine/session_controller.{c,h}` | `reduce`, `diff`, data structures. Pure, testable without frontend or Wayland. |
 | `src/frontend/session_effects.c` | `observe` (reads frontend fields) and `apply` (mutates frontend/Wayland state). Effectful, tied to `TypioWlFrontend`. |
 | `src/frontend/event_loop.c` | Per-tick driver: records facts, calls reduce/observe/diff/apply in order. |
-| `src/input/bridge.c` | Virtual-keyboard state machine (`ABSENT → NEEDS_KEYMAP → READY → BROKEN`). The session controller reads this state but does not own the transitions. |
+| `src/input/wayland/bridge.c` | Virtual-keyboard state machine (`ABSENT → NEEDS_KEYMAP → READY → BROKEN`). The session controller reads this state but does not own the transitions. |
 
 ## See Also
 

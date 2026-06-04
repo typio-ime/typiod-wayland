@@ -214,11 +214,11 @@ heavyweight clients like Chrome.
 | Session controller (pure) | `src/engine/session_controller.{c,h}` | `reduce` / `diff` / `classify_done` / guard predicates — dependency-free, unit-tested |
 | Session effects (effectful) | `src/frontend/session_effects.c` | `observe` and `apply`, including hard teardown, effect-order `_Static_assert` |
 | `zwp_input_method_keyboard_grab_v2` | `src/frontend/keyboard.c` | Grab create/destroy, key/modifiers/repeat listeners, emergency exit |
-| Key generation + tracking | `src/input/tracker.{c,h}` | Generation fence and symmetric press/release |
-| `zwp_virtual_keyboard_v1` | `src/input/bridge.c` | Keymap handoff, readiness gating, unhandled-key forwarding, fail-safe downgrade |
+| Key generation + tracking | `src/input/policy/tracker.{c,h}` | Generation fence and symmetric press/release |
+| `zwp_virtual_keyboard_v1` | `src/input/wayland/bridge.c` | Keymap handoff, readiness gating, unhandled-key forwarding, fail-safe downgrade |
 | `zwp_input_popup_surface_v2` | `src/ui/panel/surface.c` | Panel geometry, present, retry-on-stall |
 | Panel rendering | `src/ui/panel/paint.c` | Vulkan swapchain on `wl_surface` |
-| Resume detection | `src/engine/resume.c` | logind + boottime heuristic (records facts) |
+| Resume detection | `src/engine/logind/resume.c` | logind + boottime heuristic (records facts) |
 | Protocol XML | `protocols/input-method-unstable-v2.xml` | Wayland protocol definition (upstream) |
 
 ## See Also

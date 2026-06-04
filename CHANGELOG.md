@@ -45,6 +45,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`typio_wl_input_method_handle_resume`** is gone; the resume-signal
   callback records `session_facts.suspend_gap_detected` directly, and the
   per-tick driver picks it up in the same iteration.
+- **Source layout reorganised by responsibility.** `src/frontend/frontend.c`
+  split into lifecycle, Wayland bind/unbind, and IPC runtime-state
+  serialisation. The niri and logind adapters moved from
+  `src/engine/` into `src/engine/niri/` and `src/engine/logind/`
+  respectively. The former `src/bridge/` directory was dissolved:
+  `boundary.{c,h}` (pure) moved to `src/engine/`, and
+  `candidate_guard.{c,h}` (Wayland-aware) moved to `src/frontend/`.
+  `src/input/` was split into `src/input/policy/` (pure: tracker,
+  modifiers, chords, repeat_guard, tracker_access) and
+  `src/input/wayland/` (Wayland-bound: router, arbiter, repeat, bridge,
+  xkb, debug). `tests/` was mirrored into the same layout
+  (`tests/{engine,input/{policy,wayland},frontend,ui,ipc,app}/`). No
+  behavioural change.
 
 ### Added
 
