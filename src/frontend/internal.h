@@ -426,6 +426,7 @@ void typio_wl_session_flush_scheduled_ui_update(TypioWlSession *session);
 /* Keyboard functions (keyboard.c) */
 TypioWlKeyboard *typio_wl_keyboard_create(TypioWlFrontend *frontend);
 void typio_wl_keyboard_destroy(TypioWlKeyboard *keyboard);
+void typio_wl_keyboard_pause(TypioWlKeyboard *keyboard);
 void typio_wl_keyboard_release_grab(TypioWlKeyboard *keyboard);
 void typio_wl_keyboard_cancel_repeat(TypioWlKeyboard *keyboard);
 int typio_wl_keyboard_get_repeat_fd(TypioWlKeyboard *keyboard);

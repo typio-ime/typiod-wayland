@@ -270,6 +270,22 @@ void typio_wl_keyboard_release_grab(TypioWlKeyboard *keyboard) {
     typio_wl_frontend_emit_runtime_state_changed(keyboard->frontend);
 }
 
+void typio_wl_keyboard_pause(TypioWlKeyboard *keyboard) {
+    if (!keyboard) return;
+
+    typio_wl_vk_release_forwarded_keys(keyboard->frontend,
+                                        typio_wl_key_tracking_state_name);
+    typio_wl_keyboard_repeat_stop(keyboard);
+    tracking_reset(keyboard->frontend);
+
+    if (keyboard->xkb_state) {
+        xkb_state_update_mask(keyboard->xkb_state, 0, 0, 0, 0, 0, 0);
+    }
+
+    typio_wl_trace(keyboard->frontend, "grab", "action=pause status=ok");
+    typio_log_debug("Keyboard paused (grab retained)");
+}
+
 /* ── Public process helpers ──────────────────────────────────────── */
 
 void typio_wl_keyboard_process_key_press(TypioWlKeyboard *keyboard,

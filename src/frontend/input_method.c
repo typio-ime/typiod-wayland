@@ -513,12 +513,20 @@ static void transition_to_active(TypioWlFrontend *frontend) {
         return;
     }
 
-    if (!rebuild_keyboard_grab(frontend,
-                               "focus in before new grab",
-                               "Failed to create keyboard grab on activation")) {
-        typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_INACTIVE,
-                                     "focus in keyboard create failed");
-        return;
+    /* Reuse existing keyboard if available. The compositor resumes sending
+     * key events on the existing grab; no rebuild needed. This avoids the
+     * expensive xkb_keymap compile, Wayland grab create, and the
+     * NEEDS_KEYMAP window that drops keys. */
+    if (!frontend->keyboard) {
+        if (!rebuild_keyboard_grab(frontend,
+                                   "focus in before new grab",
+                                   "Failed to create keyboard grab on activation")) {
+            typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_INACTIVE,
+                                         "focus in keyboard create failed");
+            return;
+        }
+    } else {
+        typio_log_debug("Reusing existing keyboard grab (skip rebuild)");
     }
 
     typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_ACTIVE, "focus in complete");
@@ -560,7 +568,14 @@ static void transition_to_inactive(TypioWlFrontend *frontend, const char *reason
     typio_input_context_reset(frontend->session->ctx);
     typio_wl_panel_coordinator_hide_all(frontend);
 
-    typio_wl_lifecycle_hard_reset_keyboard(frontend, reason);
+    /* Soft pause: release forwarded keys, reset tracking, disarm repeat,
+     * reset XKB modifier state. Keep keyboard grab and XKB objects alive
+     * so the next activation skips the expensive rebuild (xkb_keymap compile,
+     * Wayland grab create, NEEDS_KEYMAP window). The compositor stops routing
+     * key events on deactivate but does not invalidate the grab resource. */
+    if (frontend->keyboard) {
+        typio_wl_keyboard_pause(frontend->keyboard);
+    }
     typio_wl_lifecycle_set_phase(frontend, TYPIO_WL_PHASE_INACTIVE, "focus out complete");
     typio_wl_frontend_clear_identity(frontend);
     trace_session_state(frontend, "done_focus_out_complete");

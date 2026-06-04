@@ -34,6 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unique CJK glyphs, the table is well below 75% even after hours of
   use; packer exhaustion is the real signal that the texture needs
   rebuilding.
+- **Keyboard grab reuse across focus changes.** `transition_to_inactive`
+  now calls `typio_wl_keyboard_pause` (soft reset: release forwarded keys,
+  disarm repeat, reset XKB modifier state) instead of destroying the
+  keyboard grab. `transition_to_active` reuses the existing grab if it
+  survives the deactivate. Eliminates the `xkb_keymap_new_from_string`
+  compile (~5–20 ms), the Wayland `grab_keyboard` roundtrip, and the
+  `NEEDS_KEYMAP` window that dropped keys between focus events. The full
+  rebuild path is retained for resume-from-suspend, watchdog recovery,
+  and reconnect paths.
 
 ## [0.1.10] — 2026-06-03
 
