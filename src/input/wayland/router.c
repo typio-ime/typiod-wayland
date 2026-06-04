@@ -397,7 +397,7 @@ void typio_wl_key_route_process_press(TypioWlKeyboard *keyboard,
 #ifdef HAVE_VOICE
     TypioVoiceSession *voice = typio_instance_get_voice_session(frontend->instance);
     const TypioShortcutBinding *ptt = &frontend->shortcuts.voice_ptt;
-    typio_log_debug("PTT check: keysym=0x%x mods=0x%x ptt_keysym=0x%x ptt_mods=0x%x voice_available=%s",
+    typio_log_trace("PTT check: keysym=0x%x mods=0x%x ptt_keysym=0x%x ptt_mods=0x%x voice_available=%s",
               keysym, modifiers, ptt->keysym, ptt->modifiers,
               typio_voice_session_is_available(voice) ? "yes" : "no");
     if (reserved_action == TYPIO_WL_RESERVED_ACTION_VOICE_PTT &&
@@ -518,14 +518,14 @@ void typio_wl_key_route_process_press(TypioWlKeyboard *keyboard,
             key_route_trace_decision(keyboard, "press-forward", key, keysym,
                                      modifiers, unicode, TYPIO_KEY_TRACK_FORWARDED,
                                      decision, nullptr);
-            typio_log_debug("Key forwarded to application");
+            typio_log_trace("Key forwarded to application");
         } else {
             decision = key_route_decision(TYPIO_WL_KEY_ACTION_CONSUME,
                                           TYPIO_WL_KEY_REASON_ENGINE_HANDLED);
             key_route_trace_decision(keyboard, "press-engine", key, keysym,
                                      modifiers, unicode, TYPIO_KEY_TRACK_IDLE,
                                      decision, nullptr);
-            typio_log_debug("Key handled by input method");
+            typio_log_trace("Key handled by input method");
         }
     }
 }

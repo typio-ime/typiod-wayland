@@ -515,7 +515,14 @@ DBusHandlerResult typio_tray_handle_message(DBusConnection *conn,
         interface = "";
     }
 
-    typio_log_debug("D-Bus call: %s.%s on %s", interface, member, path);
+    /* Skip routine Properties.Get polls — they fire at the panel host's
+     * polling rate (multiple times per second per property) and would
+     * otherwise flood DEBUG output. Other SNI method calls (Activate,
+     * ContextMenu, Scroll, GetAll, etc.) are still logged. */
+    if (!(strcmp(interface, DBUS_PROPERTIES_INTERFACE) == 0 &&
+          strcmp(member, "Get") == 0)) {
+        typio_log_debug("D-Bus call: %s.%s on %s", interface, member, path);
+    }
 
     /* Properties interface */
     if (strcmp(interface, DBUS_PROPERTIES_INTERFACE) == 0 ||

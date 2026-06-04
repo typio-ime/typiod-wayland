@@ -521,9 +521,10 @@ static PanelPresentResult do_present(TypioPanelSurface *s,
         uint64_t submit_us  = t_submit_us - t_record_us;
         uint64_t present_us = t_present_us - t_submit_us;
         uint64_t total_us   = t_present_us - t_begin_us;
-        /* Log if any phase exceeded 1ms (1000us) — the threshold where
-         * navigation starts feeling sluggish. */
-        if (total_us > 1000) {
+        /* Log if any phase exceeded 5ms (5000us) — the threshold where
+         * navigation starts feeling sluggish. Below this the per-event
+         * emit floods DEBUG output during normal typing. */
+        if (total_us > 5000) {
             typio_log_debug("Panel present slow: total=%" PRIu64 "us "
                             "(acquire=%" PRIu64 " record=%" PRIu64 " submit=%" PRIu64 " present=%" PRIu64 ") "
                             "selected=%d",

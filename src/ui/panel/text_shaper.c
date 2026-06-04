@@ -326,7 +326,7 @@ void typio_text_shaper_log_diag(const char *tag)
     TypioTextShaperDiag d;
     typio_text_shaper_get_diag(&d);
     unsigned long long fb_total = d.fb_resolve_hits + d.fb_resolve_misses;
-    typio_log_debug("text_shaper diag [%s]: atlas live=%u/%u shelf=%u/%upx full=%d "
+    typio_log_trace("text_shaper diag [%s]: atlas live=%u/%u shelf=%u/%upx full=%d "
                     "rebuilds=%llu raster=%llu | fb_resolve hit=%llu miss=%llu (%llu total)",
                     tag ? tag : "",
                     d.atlas_live, d.atlas_slot_capacity,
