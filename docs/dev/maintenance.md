@@ -4,7 +4,7 @@
 
 This manual documents the maintenance rules for typio-wayland's Wayland keyboard pipeline. Its goal is to keep the implementation safe, robust, predictable, and easy to extend without reintroducing stale-key bugs or asymmetric key sequences.
 
-Use this document together with the [Wayland Input Method Protocol](../explanation/wayland-input-method.md) and [Timing Model](../explanation/timing-model.md) when changing keyboard handling, engine interaction, or focus lifecycle code.
+Use this document together with the [Wayland Input Method Protocol](../explanation/wayland-input-method.md) and [Input-Method Session](../explanation/input-method-session.md) when changing keyboard handling, engine interaction, or focus lifecycle code.
 
 ## Design Goals
 
@@ -77,7 +77,7 @@ Do not overload tracking state names with routing semantics. Final routing decis
 
 ## Startup Guard Rules
 
-Stale **presses** are not suppressed by a time/epoch window. A key press is trusted as genuine user input the moment it arrives; a key whose generation does not match the active grab is dropped by the grab-generation fence (see [Timing Model §One Generation Fence](../explanation/timing-model.md#one-generation-fence)). Do not reintroduce a dispatch-window press filter — it cannot distinguish a compositor re-send from a real keystroke and silently eats the first key after every grab rebuild (notably on the reactivation churn that terminals and tmux produce).
+Stale **presses** are not suppressed by a time/epoch window. A key press is trusted as genuine user input the moment it arrives; a key whose generation does not match the active grab is dropped by the grab-generation fence (see [Input-Method Session §Generation Fence](../explanation/input-method-session.md#generation-fence)). Do not reintroduce a dispatch-window press filter — it cannot distinguish a compositor re-send from a real keystroke and silently eats the first key after every grab rebuild (notably on the reactivation churn that terminals and tmux produce).
 
 The startup guard's only remaining role is to bound **orphan-release cleanup**: `typio_wl_startup_guard_is_in_guard_window()` (using the grab's `created_at_epoch`) marks the brief window in which a release for a key that was held before the grab existed may be forwarded to the virtual keyboard so the focused client is not left with a stuck key.
 
@@ -119,7 +119,7 @@ Rule:
 
 ## Shortcut Policy
 
-The normative shortcut rules live in [Timing Model](../explanation/timing-model.md). For maintenance work, treat them as non-negotiable invariants:
+The normative shortcut rules live in [Input-Method Session](../explanation/input-method-session.md). For maintenance work, treat them as non-negotiable invariants:
 
 - shortcut bypass policy belongs to the Wayland frontend, not per engine
 - shortcut press/release handling must remain symmetric

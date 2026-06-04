@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Session controller is the single source of truth for the
+  input-method-v2 lifecycle.** The stored `TypioWlLifecyclePhase` FSM and the
+  2-second debounced reconciler are gone. The per-tick pipeline
+  (`reduce → observe → diff → apply`) in `event_loop.c` decides every effect
+  from raw input facts and a fresh resource snapshot; `engine_present` and
+  `suspend_gap_detected` are now recorded as facts. `apply` runs in a
+  fixed 8-step order, enforced at compile time by a `_Static_assert` whose
+  bitmask must equal `0xFF`. Hot-path predicates
+  (`typio_wl_session_can_route_keys`, `typio_wl_session_can_route_modifiers`,
+  `typio_wl_session_is_transitioning`) are pure functions of the snapshotted
+  actual state. `boundary.c` now takes `TypioWlGrabWant` (NONE | SOFT_PAUSE |
+  YES) instead of the legacy phase.
+
+### Removed
+
+- **Legacy lifecycle module.** `src/engine/lifecycle.c`,
+  `lifecycle_policy.c`, `lifecycle_state.h`, and the corresponding public
+  symbols (`typio_wl_lifecycle_phase_name`,
+  `typio_wl_lifecycle_phase_allows_key_events`,
+  `typio_wl_lifecycle_phase_allows_modifier_events`,
+  `typio_wl_lifecycle_classify_done`, `typio_wl_lifecycle_set_phase`,
+  `typio_wl_lifecycle_hard_reset_keyboard`,
+  `typio_wl_lifecycle_on_resume`, `typio_wl_lifecycle_observe`,
+  `typio_wl_lifecycle_project_phase`, `typio_wl_lifecycle_state_agrees`,
+  `typio_wl_lifecycle_transition_is_valid`) are deleted.
+- **Desired-vs-actual reconciler.** `src/engine/reconciler.c`,
+  `src/engine/reconcile.c`, and the `reconcile_divergence_since_ms` field
+  are deleted. The 2s debounced divergence-repair loop no longer exists;
+  per-tick diff is the recovery path.
+- **`TypioWlFrontend::lifecycle_phase`, `activate_seen`,
+  `last_committed_serial`, `reconcile_divergence_since_ms`** fields removed
+  from the frontend struct. The IPC `state->lifecycle_phase` string is now
+  derived from `typio_wl_session_observe(frontend).grab`.
+- **`typio_wl_input_method_handle_resume`** is gone; the resume-signal
+  callback records `session_facts.suspend_gap_detected` directly, and the
+  per-tick driver picks it up in the same iteration.
+
+### Added
+
+- **Pure session controller property tests.** New
+  `tests/test_state_machine_properties.c` covers the new pure helpers
+  exhaustively (`can_route_keys`, `can_route_modifiers`, `is_transitioning`,
+  `classify_done`) and adds a mutual-consistency test for the predicates.
+- **`TypioWlDoneAction` enum** with `NOOP`, `FIRST_ACTIVATE`, `DEACTIVATE`,
+  and `REACTIVATE` cases, replacing the old `TYPIO_WL_DONE_*` values from
+  `lifecycle.h`.
+
 ## [0.1.15] - 2026-06-04
 
 ### Fixed

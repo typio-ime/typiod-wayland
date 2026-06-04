@@ -110,8 +110,8 @@ structural:
   frame, D-Bus dispatch, config reload, and voice audio buffer competes with
   key processing for the same loop tick. The host must bound every non-input
   operation so a keypress never waits behind a swapchain rebuild, a glyph
-  upload, or a compositor stall. See [Timing Model](timing-model.md) and
-  [Vulkan and Flux Rendering](vulkan-flux-rendering.md).
+  upload, or a compositor stall. See [Event Loop Scheduling](event-loop-scheduling.md)
+  and [Vulkan and Flux Rendering](vulkan-flux-rendering.md).
 
 - **Visual consistency.** The candidate panel, preedit decoration, tray icon,
   and mode indicator must all reflect the same state at the same time. The
@@ -121,7 +121,7 @@ structural:
 - **Crash recovery.** A compositor lock, DPMS-off, or system suspend must not
   corrupt committed text or freeze the input path. The reconciler derives state
   from facts every step, so recovery is the same code path as normal operation.
-  See [Timing Model](timing-model.md).
+  See [Input-Method Session](input-method-session.md).
 
 - **Cross-engine smoothness.** Switching engines must clear stale preedit and
   panel state before the new engine activates, so no ghost text survives an
@@ -201,6 +201,7 @@ libtypio stays the same; engine plugins stay the same.
 
 - [Panel Architecture](panel-architecture.md) — the UI surface typio-wayland renders.
 - [Control Surfaces](control-surfaces.md) — tray, IPC bus, state controller.
-- [Timing Model](timing-model.md) — how the event loop preserves responsiveness.
+- [Event Loop Scheduling](event-loop-scheduling.md) — how the event loop preserves responsiveness.
+- [Input-Method Session](input-method-session.md) — session lifecycle and recovery paths.
 - [Vulkan and Flux Rendering](vulkan-flux-rendering.md) — GPU rendering and performance.
 - [Wayland Input Method Protocol](wayland-input-method.md) — the protocol layer.

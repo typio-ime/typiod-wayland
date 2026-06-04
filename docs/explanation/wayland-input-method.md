@@ -4,7 +4,7 @@
 
 This is a **connective-tissue** document: it does not replace the protocol specification, the source-code comments, or the deep-dive timing model. It exists so a reader can answer "how does typio handle X?" in one stop rather than grepping across `input_method.c`, `keyboard.c`, and the input helper modules.
 
-For the protocol specification see the upstream [wayland-protocols `input-method-unstable-v2.xml`](https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/unstable/input-method/input-method-unstable-v2.xml). For timing, lifecycle, and daemon-resilience rules see [Timing Model](timing-model.md).
+For the protocol specification see the upstream [wayland-protocols `input-method-unstable-v2.xml`](https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/unstable/input-method/input-method-unstable-v2.xml). For session lifecycle, build-up chain, and daemon-resilience rules see [Input-Method Session](input-method-session.md). For event-loop scheduling and GPU bounds see [Event Loop Scheduling](event-loop-scheduling.md).
 
 ## Protocol Stack
 
@@ -36,7 +36,15 @@ The daemon binds five Wayland protocol layers. The input-method layer is the one
 
 ## Event Handlers: events become facts
 
-Every `zwp_input_method_v2` event does one thing — **record a fact**. Focus facts are classified at `done`; resource drift is checked by the reconciler on the event-loop path. This is what keeps protocol handlers small and the lifecycle boundaries explicit.
+Every `zwp_input_method_v2` event does one thing — **record a fact** into
+`frontend->session_facts`. Focus facts are classified at `done`; resource
+drift is checked by the session controller on the event-loop path. This is
+what keeps protocol handlers small and the lifecycle boundaries explicit.
+
+Facts are consumed, not stored, per the session controller model: each tick
+clears the fact buffer, events refill it during dispatch, and `reduce()`
+derives the desired state atomically at the end of the batch. See
+[Session Controller](session-controller.md).
 
 ### `activate` / `deactivate`
 
@@ -62,7 +70,7 @@ The compositor's double-buffer commit point, and where focus facts become lifecy
 
 1. **Serial increment**. `im_serial++`. The serial is the count of `done` events received; it is the commit serial for every `zwp_input_method_v2_commit()` call.
 2. **Apply facts**. The buffered `surrounding_text`, `content_type`, `text_change_cause`, and `active` facts become current atomically.
-3. **Classify the state change.** The focus facts are reduced by the pure `typio_wl_lifecycle_classify_done(was_active, now_active, activate_seen)` into one action — `ACTIVATE`, `DEACTIVATE`, `REACTIVATE`, or `NONE` — which selects `transition_to_active` / `transition_to_inactive` / `transition_to_reactivate` / no-op. The classifier lives in `engine/lifecycle_policy.c` and is unit-tested (`tests/test_lifecycle.c`). A `NONE` that still finds a non-routable grab triggers stale-grab recovery through the reconciler. See [ADR-0018](../adr/0018-focus-transition-classification.md).
+3. **Classify the state change.** The focus facts are reduced by the pure `typio_wl_session_classify_done(was_active, now_active, activate_seen)` into one action — `FIRST_ACTIVATE`, `DEACTIVATE`, `REACTIVATE`, or `NOOP` — which the per-tick pipeline (event_loop.c) consumes through the `TypioWlDesiredState.focus_in` / `focus_out` / `reactivate` edges. The classifier lives in `engine/session_controller.c` and is unit-tested (`tests/test_state_machine_properties.c`). Diff converges every tick, so a `NOOP` that still finds a non-routable grab recovers naturally on the next iteration; there is no separate reconciler. See [ADR-0018](../adr/0018-focus-transition-classification.md) and [ADR-0003](../adr/0003-session-controller-reduce-diff.md).
 
 ### `unavailable`
 
@@ -89,7 +97,7 @@ This chokepoint is the single place where every protocol write is validated. All
 
 ## Keyboard Grab Lifecycle
 
-The grab and its keymap handshake are **one resource** (`absent → needs_keymap → ready → broken`) that lifecycle transitions create and the reconciler repairs; the timing rules are in [Timing Model](timing-model.md).
+The grab and its keymap handshake are **one resource** (`absent → needs_keymap → ready → broken`) that lifecycle transitions create and the reconciler repairs; the rules are in [Input-Method Session](input-method-session.md).
 
 Briefly:
 - Each grab incarnation has a **generation**. A key press claims the current generation, and the matching release is accepted only when the stored per-key generation still matches the active grab generation.
@@ -203,9 +211,8 @@ heavyweight clients like Chrome.
 | Protocol object | Source file | Responsibility |
 |---|---|---|
 | `zwp_input_method_v2` | `src/frontend/input_method.c` | Event handlers (record facts), serial chokepoint |
-| Session lifecycle | `src/engine/lifecycle.c` | Phase transitions, resume handling, hard reset |
-| Lifecycle policy (pure) | `src/engine/lifecycle_policy.c` | `classify_done`, transition validity, phase predicates — dependency-free, unit-tested |
-| Reconciler | `src/engine/reconciler.c` | Observes resources, detects divergence, triggers repair |
+| Session controller (pure) | `src/engine/session_controller.{c,h}` | `reduce` / `diff` / `classify_done` / guard predicates — dependency-free, unit-tested |
+| Session effects (effectful) | `src/frontend/session_effects.c` | `observe` and `apply`, including hard teardown, effect-order `_Static_assert` |
 | `zwp_input_method_keyboard_grab_v2` | `src/frontend/keyboard.c` | Grab create/destroy, key/modifiers/repeat listeners, emergency exit |
 | Key generation + tracking | `src/input/tracker.{c,h}` | Generation fence and symmetric press/release |
 | `zwp_virtual_keyboard_v1` | `src/input/bridge.c` | Keymap handoff, readiness gating, unhandled-key forwarding, fail-safe downgrade |
@@ -216,5 +223,6 @@ heavyweight clients like Chrome.
 
 ## See Also
 
-- [Timing Model](timing-model.md) — declared lifecycle phase, observed axes, key generation fencing, event-loop scheduling, and daemon resilience (suspend/resume, compositor restart, silent grab loss)
+- [Input-Method Session](input-method-session.md) — declared lifecycle phase, observed axes, key generation fencing, and daemon resilience (suspend/resume, compositor restart, silent grab loss)
+- [Event Loop Scheduling](event-loop-scheduling.md) — event-loop scheduling, GPU bounds, D-Bus dispatch, and poll deadlines
 - [Panel Appearance](../dev/panel-appearance.md) — Vulkan Panel rendering pipeline

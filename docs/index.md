@@ -15,10 +15,13 @@ The Linux/Wayland host for the [Typio](../typio) input method framework. This re
 - **[Explanation](explanation/)** — Understanding-oriented design documents.
   - [Project Scope: typio-wayland vs. libtypio](explanation/project-scope.md)
   - [Wayland Input Method Protocol](explanation/wayland-input-method.md)
+  - [Input-Method Session](explanation/input-method-session.md) — Disambiguates the three layers of "session"
+  - [Session Controller](explanation/session-controller.md) — Derived-state, idempotent-diff lifecycle model
   - [Panel Architecture](explanation/panel-architecture.md)
   - [Frontend Graphics](explanation/frontend-graphics.md)
   - [Vulkan and Flux Rendering](explanation/vulkan-flux-rendering.md)
-  - [Timing Model](explanation/timing-model.md)
+  - [Input-Method Session](explanation/input-method-session.md) — three layers of session, build-up chain, and lifecycle rules
+  - [Event Loop Scheduling](explanation/event-loop-scheduling.md) — GPU bounds, D-Bus dispatch, config reload, and poll deadlines
   - [Control Surfaces](explanation/control-surfaces.md)
 - **[Developer Documentation](dev/)** — Contributor-oriented docs.
   - [Developer Setup](dev/setup.md)

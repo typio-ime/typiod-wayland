@@ -220,7 +220,7 @@ Interpret the most common bad combinations like this:
 - `virtual_keyboard_state=broken`: vk has been declared unusable and the daemon should fail open instead of continuing to swallow keys
 - increasing `virtual_keyboard_drop_count`: the daemon is receiving input it cannot safely forward to the focused client
 
-For the complete diagnostic meaning of these fields and the underlying timing model, see [Developer Timing Model](../explanation/timing-model.md).
+For the complete diagnostic meaning of these fields and the underlying session model, see [Input-Method Session](../explanation/input-method-session.md) and [Event Loop Scheduling](../explanation/event-loop-scheduling.md).
 
 If you report a timing or freeze problem, include both:
 

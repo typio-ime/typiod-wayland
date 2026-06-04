@@ -89,7 +89,7 @@ a correctness + testability improvement *within* the stored-phase model, not the
 realisation of ADR-0003. `classify_done` is a small, honest "reduce focus facts
 to an action" step that is compatible with — and a stepping stone toward — the
 ADR-0003 model, should the stored phase later be removed. The explanation docs
-that describe the reduce+diff model as already complete (`timing-model.md`,
+that describe the reduce+diff model as already complete (`input-method-session.md`,
 `wayland-input-method.md`) overstate the current code; reconciling them with the
 phase-machine reality is tracked separately.
 
