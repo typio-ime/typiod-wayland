@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.13] - 2026-06-05
+
+### Fixed
+
+- **ABI version validation in plugin loader.** `plugin_loader.c` now resolves
+  `typio_engine_abi_version` from each shared object and calls
+  `typio_engine_abi_check()` before making any vtable calls. Plugins with
+  mismatched ABI are rejected with a clear log message, preventing SIGSEGV
+  from struct layout divergence at runtime.
+
+### Changed
+
+- **Engine discovery order: system before user.** `typio_engine_dirs_build()`
+  now returns the system directory (`$PREFIX/$LIBDIR/typio/engines`) before the
+  user directory (`~/.local/lib/typio/engines`). The full priority order is:
+  CLI override → `TYPIO_ENGINE_DIR` env var → system directory → user
+  directory. This ensures production engines take precedence over
+  development/test builds in the user's home directory.
+
 ## [0.1.12] - 2026-06-05
 
 ### Changed
