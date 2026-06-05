@@ -118,7 +118,7 @@ endif
 
 if enable_voice
     host_sources += files(
-        'voice/pw_capture.c',
+        'audio/pw_capture.c',
     )
 endif
 
@@ -170,7 +170,7 @@ if enable_systray
 endif
 
 if enable_voice
-    host_inc += include_directories('voice')
+    host_inc += include_directories('audio')
 endif
 
 # ── Executable ────────────────────────────────────────────────────────────

@@ -28,7 +28,7 @@
 #include <time.h>
 #ifdef HAVE_VOICE
 #include "typio/abi/voice.h"
-#include "voice/pw_capture.h"
+#include "audio/pw_capture.h"
 #endif
 
 #include <wayland-client.h>

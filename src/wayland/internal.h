@@ -38,7 +38,7 @@
 
 #ifdef HAVE_VOICE
 #include "typio/abi/voice.h"
-#include "voice/pw_capture.h"
+#include "audio/pw_capture.h"
 #endif
 
 #ifdef __cplusplus

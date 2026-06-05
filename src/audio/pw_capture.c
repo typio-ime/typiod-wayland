@@ -184,7 +184,7 @@ static struct pw_stream *pw_capture_make_stream(TypioPwCapture *cap) {
         PW_KEY_MEDIA_ROLE, "Communication",
         PW_KEY_NODE_LATENCY, "256/16000",
         PW_KEY_APP_NAME, "Typio",
-        PW_KEY_NODE_NAME, "typio-voice-capture",
+        PW_KEY_NODE_NAME, "typio-audio-capture",
         nullptr);
 
     return pw_stream_new_simple(
