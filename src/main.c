@@ -3,6 +3,7 @@
 #include "plugin_loader.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 int main(int argc, char *argv[]) {
     TypioOptions options;
@@ -13,19 +14,22 @@ int main(int argc, char *argv[]) {
     typio_options_init(&options);
     parse_result = typio_parse_args(&options, argc, argv);
     if (parse_result >= 0) {
+        free((void *)options.engine_dirs);
         return parse_result;
     }
 
     /* The host owns plugin discovery: resolve the directory search list
      * and wire in the dlopen-based loader. Core stays platform-neutral. */
     const char *const *engine_dirs =
-        typio_engine_dirs_build(options.engine_dir_override);
+        typio_engine_dirs_build(options.engine_dirs, options.engine_dir_count);
     options.instance_config.engine_dirs = engine_dirs;
     options.instance_config.plugin_loader = typio_plugin_load_dir;
 
     bool ok = typio_app_init(&app, &options.instance_config, options.verbose, argv);
     /* new_with_config copied the dir strings into the instance; safe to free. */
     typio_engine_dirs_free(engine_dirs);
+    /* Free the -E accumulator array; its entries are borrowed argv pointers. */
+    free((void *)options.engine_dirs);
     if (!ok) {
         return 1;
     }

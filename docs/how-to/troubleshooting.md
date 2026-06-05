@@ -18,10 +18,10 @@ ls /usr/local/lib/typio/engines
 ```
 
 The [basic engine](../../typio-engine-basic) is a separate repository: build it
-with `cargo build --release`, then install the `.so` into an engine directory.
+with `cargo build --release`, then point the daemon at its build directory.
 For development-only engines, start the daemon with `typio --engine-dir DIR`
-or set `TYPIO_ENGINE_DIR=DIR`; `~/.local/lib/typio/engines` is not scanned by
-default.
+(repeatable) or set `TYPIO_ENGINE_PATH=DIR1:DIR2`; no per-user directory is
+scanned by default.
 
 See the [Engine Discovery Reference](../reference/engine-discovery.md) for the
 full search-path order and naming rules.

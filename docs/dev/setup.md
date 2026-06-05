@@ -135,45 +135,62 @@ export LD_LIBRARY_PATH=../libtypio/target/release:${LD_LIBRARY_PATH}
 The verbose log reports how many engines were discovered at startup
 (`Host loader registered N engine(s) from …`).
 
-For plugin engine work, point the daemon at a specific engine directory
-(overriding the default scan list). Once you've installed an engine (see
-below), this runs it directly:
+For plugin engine work, point the daemon at one or more engine directories.
+`--engine-dir` is repeatable and takes highest precedence, so you can run
+freshly built engines straight from their build trees — no copy step, no
+symlinking. Pass the directory that **contains** the `libtypio_engine_<name>.so`
+— a Cargo engine's `target/release`, a Meson engine's `build` — not the
+repository root; the scan is flat and does not recurse into subdirectories:
 
 ```bash
-./build/src/typio --engine-dir build/engines --verbose
+./build/src/typio -v \
+  --engine-dir ../typio-engine-basic/target/release \
+  --engine-dir ../typio-engine-mozc/build
 ```
 
-Both `TYPIO_ENGINE_DIR` and `--engine-dir` accept a single path. If you
-need to test multiple engine directories at once, symlink them into a
-single directory and point the daemon there.
+Equivalently, set the colon-separated `$TYPIO_ENGINE_PATH` (PATH-style) once
+in your shell instead of repeating the flag:
 
-## Install a keyboard engine (optional)
+```bash
+export TYPIO_ENGINE_PATH="$PWD/../typio-engine-basic/target/release:$PWD/../typio-engine-mozc/build"
+./build/src/typio -v
+```
+
+The daemon auto-loads only from the system directory; `--engine-dir` and
+`$TYPIO_ENGINE_PATH` are explicit opt-ins, and no per-user directory is
+scanned by default (see [ADR-0025](../adr/0025-engine-discovery-search-path.md)).
+
+## Load a keyboard engine (optional)
 
 `typio` starts and runs without any keyboard engine — it just has nothing
 to convert keystrokes with, so it logs a "No keyboard engine is active"
 startup warning and falls back to a "No engine loaded" placeholder. To
 actually exercise input conversion (and to verify your build wires up the
-engine ABI correctly), install at least one engine.
+engine ABI correctly), build one engine and point the daemon at it.
 
 Any engine works; this uses `typio-engine-basic`, the zero-dependency
-fallback, as the concrete example:
+fallback, as the concrete example. Cargo emits `libtypio_engine_<name>.so`
+directly into its target directory:
 
 ```bash
 ( cd ../typio-engine-basic && cargo build --release )
 ```
 
-This produces `../typio-engine-basic/target/release/libtypio_engine_basic.so`.
+This produces `../typio-engine-basic/target/release/libtypio_engine_basic.so`;
+the `basic` suffix becomes the engine identifier exposed to users and
+configuration files.
 
-Copy it into a development engine directory:
+Point the daemon at that build directory with `--engine-dir` — no copy and no
+install step (see [Run the daemon while iterating](#3-run-the-daemon-while-iterating)):
 
 ```bash
-mkdir -p build/engines
-cp ../typio-engine-basic/target/release/libtypio_engine_basic.so \
-   build/engines/
+./build/src/typio -v --engine-dir ../typio-engine-basic/target/release
 ```
 
-The file name suffix (`basic`) becomes the engine identifier exposed to
-users and configuration files.
+Different build systems emit into different directories — a Cargo engine into
+`target/release`, a Meson engine (such as `typio-engine-mozc`) into `build` —
+but the rule is the same: pass the directory that contains the
+`libtypio_engine_<name>.so`.
 
 ## Optional features
 
@@ -199,8 +216,8 @@ explicitly.
 
 | Order | Source | Path |
 |---|---|---|
-| 1 | `-E` / `--engine-dir DIR` | directory passed on the command line |
-| 2 | `$TYPIO_ENGINE_DIR` | value of that environment variable |
+| 1 | `-E` / `--engine-dir DIR` | directories passed on the command line; repeatable, in the order given |
+| 2 | `$TYPIO_ENGINE_PATH` | colon-separated list, in listed order |
 | 3 | **System** | compile-time `<prefix>/<libdir>/typio/engines` (typically `/usr/lib/typio/engines`) |
 
 In each directory it loads only files named `libtypio_engine_<name>.so`,

@@ -5,6 +5,7 @@
 
 #include <getopt.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static const char *typio_build_display_string(void) {
@@ -38,7 +39,7 @@ void typio_print_help(const char *prog) {
     printf("Options:\n");
     printf("  -c, --config DIR    Configuration directory\n");
     printf("  -d, --data DIR      Data directory\n");
-    printf("  -E, --engine-dir DIR Engine directory\n");
+    printf("  -E, --engine-dir DIR Engine directory (repeatable; highest precedence)\n");
     printf("  -v, --verbose       Enable verbose logging\n");
     printf("  -h, --help          Show this help message\n");
     printf("  --version           Show version information\n");
@@ -69,9 +70,19 @@ int typio_parse_args(TypioOptions *options, int argc, char *argv[]) {
             case 'd':
                 options->instance_config.data_dir = optarg;
                 break;
-            case 'E':
-                options->engine_dir_override = optarg;
+            case 'E': {
+                /* Accumulate repeated --engine-dir in order. optarg is
+                 * borrowed from argv (valid for the program's lifetime); only
+                 * the pointer array is owned here. */
+                const char **grown =
+                    realloc(options->engine_dirs,
+                            (options->engine_dir_count + 1) * sizeof(*grown));
+                if (grown) {
+                    options->engine_dirs = grown;
+                    options->engine_dirs[options->engine_dir_count++] = optarg;
+                }
                 break;
+            }
             case 'v':
                 options->verbose = true;
                 break;

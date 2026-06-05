@@ -9,9 +9,13 @@ extern "C" {
 
 typedef struct TypioOptions {
     TypioInstanceConfig instance_config;
-    /** Engine directory from -E/--engine-dir, or NULL. The full
-     *  engine_dirs list is assembled in the host before init. */
-    const char *engine_dir_override;
+    /** Engine directories from repeated -E/--engine-dir, in the order given,
+     *  or NULL. Entries are borrowed argv pointers; the array itself is heap-
+     *  allocated and owned by the caller. The full search list (these, then
+     *  $TYPIO_ENGINE_PATH, then the system directory) is assembled in the host
+     *  before init — see ADR-0025. */
+    const char **engine_dirs;
+    size_t engine_dir_count;
     bool verbose;
 } TypioOptions;
 

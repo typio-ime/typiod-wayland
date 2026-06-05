@@ -293,26 +293,53 @@ int typio_plugin_load_dir(TypioRegistry *registry,
 
 /* ── Engine directory resolution ──────────────────────────────────────── */
 
-const char *const *typio_engine_dirs_build(const char *cli_override) {
-    /* At most 3 entries + NULL terminator. */
-    char **dirs = calloc(4, sizeof(char *));
+const char *const *typio_engine_dirs_build(const char *const *cli_dirs,
+                                           size_t cli_count) {
+    /* $TYPIO_ENGINE_PATH is a colon-separated, ordered list (PATH-style). */
+    const char *env_path = getenv("TYPIO_ENGINE_PATH");
+
+    /* Upper bound: cli entries + env segments + system dir + NULL terminator.
+     * Segment count is bounded by (colons + 1). */
+    size_t env_max = 0;
+    if (env_path && env_path[0]) {
+        env_max = 1;
+        for (const char *p = env_path; *p; p++) {
+            if (*p == ':') {
+                env_max++;
+            }
+        }
+    }
+    size_t cap = cli_count + env_max + 1; /* +1 for the system dir */
+    char **dirs = calloc(cap + 1, sizeof(char *));
     if (!dirs) {
         return nullptr;
     }
     size_t n = 0;
 
-    if (cli_override && cli_override[0]) {
-        dirs[n++] = strdup(cli_override);
+    /* 1. Repeated --engine-dir, in the order given (highest precedence). */
+    for (size_t i = 0; i < cli_count; i++) {
+        if (cli_dirs[i] && cli_dirs[i][0]) {
+            dirs[n++] = strdup(cli_dirs[i]);
+        }
     }
 
-    const char *env_dir = getenv("TYPIO_ENGINE_DIR");
-    if (env_dir && env_dir[0]) {
-        dirs[n++] = strdup(env_dir);
+    /* 2. $TYPIO_ENGINE_PATH, each colon-separated segment in listed order. */
+    if (env_path && env_path[0]) {
+        char *copy = strdup(env_path);
+        if (copy) {
+            char *save = nullptr;
+            for (char *tok = strtok_r(copy, ":", &save); tok != nullptr;
+                 tok = strtok_r(nullptr, ":", &save)) {
+                if (tok[0]) {
+                    dirs[n++] = strdup(tok);
+                }
+            }
+            free(copy);
+        }
     }
 
-    /* Production defaults only load system-installed engines. Development and
-     * test engines must be enabled explicitly via --engine-dir or
-     * TYPIO_ENGINE_DIR. */
+    /* 3. Compile-time system directory (lowest precedence). The daemon
+     * auto-loads only from here; everything above is an explicit opt-in. */
     if (TYPIO_ENGINE_DIR[0]) {
         dirs[n++] = strdup(TYPIO_ENGINE_DIR);
     }

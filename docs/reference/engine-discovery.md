@@ -6,13 +6,13 @@ How `typio` locates and loads engine plugins at startup.
 
 | Order | Source | Path |
 |---|---|---|
-| 1 | `-E` / `--engine-dir DIR` | directory given on the command line |
-| 2 | `$TYPIO_ENGINE_DIR` | value of the environment variable |
+| 1 | `-E` / `--engine-dir DIR` | directories given on the command line; **repeatable**, scanned in the order given |
+| 2 | `$TYPIO_ENGINE_PATH` | colon-separated list, scanned in listed order |
 | 3 | System lib dir | compile-time `<prefix>/<libdir>/typio/engines` (e.g. `/usr/lib/typio/engines`, or `/usr/local/lib/typio/engines` for a `/usr/local` prefix) |
 
 - All existing directories in the list are scanned, in the order above.
 - The **first** engine of a given `<name>` registers; a later duplicate is rejected (`AlreadyExists`).
-- Consequence: development and test engines shadow system engines only when enabled explicitly with `--engine-dir` or `$TYPIO_ENGINE_DIR`.
+- The daemon auto-loads only from the system directory (order 3). Orders 1 and 2 are explicit operator opt-ins; there is no per-user `$HOME` auto-scan. See [ADR-0025](../adr/0025-engine-discovery-search-path.md) for the rationale (engines are keystroke-privileged native code).
 
 ## File name convention
 
@@ -39,4 +39,4 @@ How `typio` locates and loads engine plugins at startup.
 
 - [How to Package for Distribution](../how-to/package-for-distribution.md) — install paths for packagers
 - [Troubleshooting: no engines](../how-to/troubleshooting.md) — common discovery failures
-- [Developer Setup](../dev/setup.md#engine-discovery) — building and installing an engine locally
+- [Developer Setup](../dev/setup.md#engine-discovery) — building an engine and pointing the daemon at it locally

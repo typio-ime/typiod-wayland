@@ -19,17 +19,21 @@ int typio_plugin_load_dir(TypioRegistry *registry,
                            void *user_data);
 
 /**
- * @brief Resolve the ordered list of engine directories to scan.
+ * @brief Resolve the ordered list of engine directories to scan (ADR-0025).
  *
- * Precedence (earlier shadows later; duplicates are skipped by the
- * registry): explicit @p cli_override, then $TYPIO_ENGINE_DIR, then the
- * compile-time system dir.
+ * Precedence, highest first (the registry registers the first engine of each
+ * name and skips later duplicates): the @p cli_count entries of @p cli_dirs in
+ * order, then each colon-separated segment of $TYPIO_ENGINE_PATH in order,
+ * then the compile-time system directory. There is no per-user auto-scan: the
+ * daemon auto-loads only from the trusted system directory; every other source
+ * is an explicit operator opt-in.
  *
  * Returns a NULL-terminated, heap-allocated array of heap-allocated
  * strings suitable for TypioInstanceConfig.engine_dirs. Free with
  * typio_engine_dirs_free.
  */
-const char *const *typio_engine_dirs_build(const char *cli_override);
+const char *const *typio_engine_dirs_build(const char *const *cli_dirs,
+                                           size_t cli_count);
 void typio_engine_dirs_free(const char *const *dirs);
 
 /**
