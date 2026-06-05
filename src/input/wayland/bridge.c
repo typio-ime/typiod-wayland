@@ -7,7 +7,6 @@
 #include "bridge.h"
 #include "debug.h"
 #include "clock.h"
-#include "recent_log.h"
 #include "internal.h"
 #include "trace.h"
 #include "typio/abi/log.h"
@@ -282,7 +281,6 @@ static void typio_wl_vk_trigger_fail_safe(TypioWlFrontend *frontend,
               last_forward_age_ms,
               typio_wl_grab_resource_state_name(
                   typio_wl_session_observe(frontend).grab));
-    typio_dump_recent_log();
     if (frontend->keyboard) {
         typio_wl_keyboard_release_grab(frontend->keyboard);
     }

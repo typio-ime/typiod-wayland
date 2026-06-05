@@ -16,7 +16,6 @@
 #include "ui/state.h"
 #endif
 
-#include <dirent.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
@@ -515,104 +514,6 @@ static void typio_install_signal_handlers(TypioApp *app) {
     signal(SIGTERM, typio_signal_handler);
 }
 
-static bool typio_is_legacy_recent_log_name(const char *name) {
-    size_t len;
-    const char prefix[] = "typio-recent-";
-    const char suffix[] = ".log";
-    size_t prefix_len = strlen(prefix);
-    size_t suffix_len = strlen(suffix);
-
-    if (!name || !*name) {
-        return false;
-    }
-
-    if (strcmp(name, "typio-recent.log") == 0) {
-        return true;
-    }
-
-    len = strlen(name);
-    return len > prefix_len + suffix_len &&
-           strncmp(name, prefix, prefix_len) == 0 &&
-           strcmp(name + len - suffix_len, suffix) == 0;
-}
-
-static void typio_remove_legacy_recent_logs(const char *state_dir) {
-    DIR *dir;
-    struct dirent *entry;
-    size_t removed_count = 0;
-
-    if (!state_dir || !*state_dir) {
-        return;
-    }
-
-    dir = opendir(state_dir);
-    if (!dir) {
-        return;
-    }
-
-    while ((entry = readdir(dir)) != nullptr) {
-        char legacy_path[1024];
-
-        if (!typio_is_legacy_recent_log_name(entry->d_name)) {
-            continue;
-        }
-
-        if (snprintf(legacy_path, sizeof(legacy_path), "%s/%s",
-                     state_dir, entry->d_name) >= (int)sizeof(legacy_path)) {
-            typio_log_warning("Skipping oversized legacy log cleanup path in "
-                              "state dir: %s",
-                              entry->d_name);
-            continue;
-        }
-
-        if (unlink(legacy_path) == 0) {
-            removed_count++;
-        } else if (errno != ENOENT) {
-            typio_log_warning("Failed to remove legacy recent log %s: %s",
-                              legacy_path, strerror(errno));
-        }
-    }
-
-    closedir(dir);
-
-    if (removed_count > 0) {
-        typio_log_info("Removed %zu legacy recent log file(s) from %s",
-                       removed_count, state_dir);
-    }
-}
-
-static void typio_configure_recent_log_dump(TypioApp *app) {
-    const char *state_dir;
-
-    if (!app || !app->instance) {
-        return;
-    }
-
-    state_dir = typio_instance_get_state_dir(app->instance);
-    if (!state_dir || !*state_dir) {
-        return;
-    }
-
-    typio_remove_legacy_recent_logs(state_dir);
-
-    if (snprintf(app->recent_log_dump_path, sizeof(app->recent_log_dump_path),
-                 "%s/%s", state_dir, "logs/latest.log") >=
-        (int)sizeof(app->recent_log_dump_path)) {
-        app->recent_log_dump_path[0] = '\0';
-        return;
-    }
-
-    /* libtypio no longer holds a "configured path"; the host stamps the
-     * path here and calls typio_logger_dump_recent on demand. */
-    (void)app->recent_log_dump_path;
-}
-
-void typio_dump_recent_log(void) {
-    if (!g_active_app || !g_active_app->recent_log_dump_path[0])
-        return;
-    typio_logger_dump_recent(g_active_app->recent_log_dump_path);
-}
-
 bool typio_app_init(TypioApp *app,
                            const TypioInstanceConfig *config,
                            bool verbose,
@@ -663,8 +564,6 @@ bool typio_app_init(TypioApp *app,
         app->instance = nullptr;
         return false;
     }
-
-    typio_configure_recent_log_dump(app);
 
     return true;
 }
@@ -844,11 +743,6 @@ int typio_app_finish(TypioApp *app, int exit_code) {
         typio_log_warning("Shutdown requested by signal: signal=%d (%s)",
                           sig,
                           typio_signal_name(sig));
-    }
-
-    if ((exit_code != 0 || app->shutdown_requested_by_signal) &&
-        app->recent_log_dump_path[0] != '\0') {
-        typio_logger_dump_recent(app->recent_log_dump_path);
     }
 
     if (app->restart_requested && exit_code == 0) {

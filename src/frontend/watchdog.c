@@ -6,7 +6,6 @@
 #include "internal.h"
 #include "trace.h"
 #include "clock.h"
-#include "recent_log.h"
 #include "typio/abi/log.h"
 
 #include <inttypes.h>
@@ -89,7 +88,6 @@ static void *watchdog_thread(void *data) {
                     deadline_remaining,
                     runtime_age_ms(now, frontend->vk ? frontend->vk->state_since_ms
                                                      : 0));
-                typio_dump_recent_log();
                 kill(getpid(), SIGKILL);
                 break;
             }

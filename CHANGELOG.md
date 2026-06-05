@@ -105,6 +105,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Updated all 14 consumer `#include` lines and the cross-reference in
   `docs/adr/0015-candidate-popup-lag-final-fixes.md`.
 
+### Removed
+
+- **`typio_dump_recent_log` and the legacy on-disk ring-buffer dump.**
+  Five fatal-exit call sites (VK broken state in `bridge.c`, emergency
+  exit in `router.c`, two in `keyboard.c`, watchdog timeout in
+  `watchdog.c`) now log the cause and either stop or `SIGKILL` directly.
+  `typio_app_finish` no longer dumps the buffer before a normal
+  shutdown. The `recent_log_dump_path` field on `TypioApp` and the
+  `src/recent_log.h` header are gone. `app.c` no longer needs
+  `<dirent.h>`. systemd's journald already captures stderr for
+  post-mortem analysis, and the legacy `typio-recent-*.log` file
+  sweep that ran at startup is dropped.
+
 ## [0.1.15] - 2026-06-04
 
 ### Fixed

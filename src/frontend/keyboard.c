@@ -20,14 +20,12 @@
 #include "input/wayland/repeat.h"
 #include "input/policy/modifiers.h"
 #include "input/policy/repeat_guard.h"
+#include "input/wayland/xkb_modifiers.h"
 #include "candidate_guard.h"
 #include "clock.h"
-#include "recent_log.h"
 #include "startup.h"
 #include "input/wayland/bridge.h"
 #include "trace.h"
-#include "input/wayland/xkb_modifiers.h"
-#include "typio/typio.h"
 #include "typio/abi/log.h"
 
 #include <stdlib.h>
@@ -90,7 +88,6 @@ static void guard_trigger_failsafe(TypioWlKeyboard *kb, const char *reason,
         "; releasing grab and stopping",
         reason, typio_wl_grab_resource_state_name(actual.grab),
         key, keysym, modifiers, fe->guard_reject_press_streak);
-    typio_dump_recent_log();
     typio_wl_keyboard_release_grab(kb);
     typio_wl_frontend_stop(fe);
 }
@@ -360,7 +357,6 @@ static void on_key(void *data,
             key, keysym, modifiers,
             typio_wl_grab_resource_state_name(
                 typio_wl_session_observe(frontend).grab));
-        typio_dump_recent_log();
         typio_wl_keyboard_release_grab(keyboard);
         typio_wl_frontend_stop(frontend);
         return;

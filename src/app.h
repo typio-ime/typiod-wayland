@@ -27,7 +27,6 @@ typedef struct TypioApp {
     bool restart_requested;
     bool shutdown_requested_by_signal;
     volatile sig_atomic_t shutdown_signal;
-    char recent_log_dump_path[1024];
 #ifdef HAVE_WAYLAND
     TypioWlFrontend *wl_frontend;
 #endif
