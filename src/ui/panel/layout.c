@@ -498,7 +498,7 @@ void panel_config_load(PanelConfig *cfg, TypioInstance *instance) {
     if (!cfg) return;
 
     cfg->theme_mode     = TYPIO_PANEL_THEME_AUTO;
-    cfg->layout_mode    = PANEL_LAYOUT_VERTICAL;
+    cfg->layout_mode    = PANEL_LAYOUT_HORIZONTAL;
     cfg->font_size      = PANEL_DEFAULT_FONT_SIZE;
     cfg->mode_indicator = false;
     memset(&cfg->light_custom, 0, sizeof(cfg->light_custom));

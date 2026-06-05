@@ -14,8 +14,8 @@
 # Theme: "auto" (follow desktop), "light", or "dark"  (default: "auto")
 panel_theme = "auto"
 
-# Candidate layout: "horizontal" or "vertical"  (default: "vertical")
-candidate_layout = "vertical"
+# Candidate layout: "horizontal" or "vertical"  (default: "horizontal")
+candidate_layout = "horizontal"
 
 # Panel font size in points, range 6–72  (default: 11)
 font_size = 11

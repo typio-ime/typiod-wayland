@@ -136,7 +136,7 @@ model    = "sensevoice-small"   # directory name under ~/.local/share/typio/sher
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `panel_theme` | string | `"auto"` | `"auto"` (follow desktop), `"light"`, or `"dark"`. |
-| `candidate_layout` | string | `"vertical"` | `"horizontal"` or `"vertical"`. |
+| `candidate_layout` | string | `"horizontal"` | `"horizontal"` or `"vertical"`. |
 | `font_size` | int | `11` | Panel text size in points (6–72). |
 | `font_family` | string | `"Sans"` | Font family name.  Use a name known to Fontconfig. |
 | `panel_mode_indicator` | bool | `false` | Show the engine mode label (e.g. "中" / "A") inside the Panel. |

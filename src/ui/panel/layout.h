@@ -29,7 +29,7 @@
 #define PANEL_COL_GAP           2    /* gap between columns (horizontal)   */
 #define PANEL_SECTION_GAP       6
 #define PANEL_LABEL_GAP         5    /* gap between index label and text   */
-#define PANEL_DEFAULT_FONT_SIZE 16
+#define PANEL_DEFAULT_FONT_SIZE 11
 
 /* ── Configuration ──────────────────────────────────────────────────── */
 
