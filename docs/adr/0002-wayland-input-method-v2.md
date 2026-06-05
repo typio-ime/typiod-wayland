@@ -6,7 +6,7 @@
 
 ## Context
 
-`typio-wayland` is a Wayland-native input method host. To receive activation, keyboard input, and popup placement, it must bind to a Wayland input-method protocol. At project start the only broadly supported option was `zwp_input_method_manager_v2` / `zwp_input_method_v2`, defined in `input-method-unstable-v2.xml`.
+`typio-linux` is a Wayland-native input method host. To receive activation, keyboard input, and popup placement, it must bind to a Wayland input-method protocol. At project start the only broadly supported option was `zwp_input_method_manager_v2` / `zwp_input_method_v2`, defined in `input-method-unstable-v2.xml`.
 
 The protocol is explicitly **unstable**: compositor behaviour varies, event ordering is not fully specified, and it may be superseded by a future stable version.
 

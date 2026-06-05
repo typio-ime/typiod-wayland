@@ -1,11 +1,12 @@
-# Typio Wayland frontend configuration example
+# Typio platform configuration example
 #
-# Location: $XDG_CONFIG_HOME/typio/wayland.toml
-#          (defaults to ~/.config/typio/wayland.toml)
+# Location: $XDG_CONFIG_HOME/typio/platform.toml
+#          (defaults to ~/.config/typio/platform.toml)
 #
-# This file owns Panel styling for the Wayland frontend. Framework policy,
-# shortcuts, voice runtime, and per-engine settings live in core.toml next
-# to it. Last-used engine selection is runtime state, not config.
+# This file owns the platform-specific (host) configuration: Panel styling
+# for the current frontend. Platform-independent framework policy, shortcuts,
+# voice runtime, and per-engine settings live in core.toml next to it.
+# Last-used engine selection is runtime state, not config.
 #
 # For the full reference of every key, see docs/reference/configuration.md.
 

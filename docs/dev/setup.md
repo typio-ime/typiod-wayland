@@ -1,6 +1,6 @@
 # Developer Setup
 
-This document is for contributors who will modify `typio-wayland` source code.
+This document is for contributors who will modify `typio-linux` source code.
 
 ## Quick start
 
@@ -55,7 +55,7 @@ them system-wide.
 parent/
 ├── libtypio/          ← cargo build --release
 ├── flux/              ← optional; auto-symlinked as subprojects/flux
-└── typio-wayland/     ← run all commands from here
+└── typio-linux/     ← run all commands from here
 ```
 
 **Stale `subprojects/flux` symlink?**  If a sibling `../flux` checkout was
@@ -70,7 +70,7 @@ meson setup --reconfigure build
 ## Local development workflow
 
 For active work on libtypio you'll want a local checkout next to
-typio-wayland and discover it via `pkg-config`.  When you're not
+typio-linux and discover it via `pkg-config`.  When you're not
 touching libtypio internals, the wrap path (`subprojects/libtypio.wrap`)
 or a system install is enough.
 
@@ -81,13 +81,13 @@ or a system install is enough.
 | `flux` | Candidate Panel renderer | Meson subproject (auto) |
 
 The commands below assume **sibling checkouts** and that you run every
-command from the `typio-wayland` directory:
+command from the `typio-linux` directory:
 
 ```
 parent/
 ├── libtypio/
 ├── typio-engine-basic/
-└── typio-wayland/   ← run all commands from here
+└── typio-linux/   ← run all commands from here
 ```
 
 If your layout differs, adjust the `../libtypio` paths accordingly.
@@ -109,7 +109,7 @@ development. The rest of this guide points `PKG_CONFIG_PATH` and
 installation (like `make install`) is only needed when packaging for
 distribution.
 
-### 2. Build typio-wayland
+### 2. Build typio-linux
 
 Point `PKG_CONFIG_PATH` at libtypio's `target/release` (where the `.pc`
 files were generated) before running Meson.  If the variable is not set

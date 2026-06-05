@@ -2,7 +2,7 @@
 
 - **Status**: Accepted
 - **Date**: 2026-06-03
-- **Deciders**: typio-wayland maintainers
+- **Deciders**: typio-linux maintainers
 - **Amends**: [ADR-0015](0015-candidate-popup-lag-final-fixes.md)
 
 ## Context

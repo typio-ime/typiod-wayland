@@ -5,7 +5,7 @@ Typio uses two files under `$XDG_CONFIG_HOME/typio` (default `~/.config/typio`):
 | File | Owner | What it controls |
 |------|-------|------------------|
 | `core.toml` | **libtypio** (framework) | Engine registry, shortcuts, notifications, voice runtime, per-engine settings |
-| `wayland.toml` | **typio-wayland** (this host) | Panel styling: theme, fonts, colours, layout |
+| `platform.toml` | **typio-linux** (this host) | Panel styling: theme, fonts, colours, layout |
 
 Both files are read from the same directory.  The directory itself is created
 and managed by libtypio (`typio_instance_get_config_dir`).  If you need a
@@ -17,7 +17,7 @@ custom path, use the `-c` / `--config` CLI flag.
    ```bash
    mkdir -p ~/.config/typio
    cp data/core.toml.example ~/.config/typio/core.toml
-   cp data/wayland.toml.example ~/.config/typio/wayland.toml
+   cp data/platform.toml.example ~/.config/typio/platform.toml
    ```
 2. Edit the keys you need.
 3. Most changes are picked up **without restart** via inotify reload (see
@@ -46,7 +46,7 @@ Parsed by libtypio.  All values are shortcut strings such as `Ctrl+Shift` or
 
 ### `[notifications]` — desktop notification policy
 
-**Consumed by typio-wayland.**  These keys control startup health notifications
+**Consumed by typio-linux.**  These keys control startup health notifications
 and runtime toast behaviour.
 
 | Key | Type | Default | Description |
@@ -59,7 +59,7 @@ and runtime toast behaviour.
 
 ### `[engines.basic]` — basic engine routing
 
-**Consumed by typio-wayland** (input router).  These keys change how the
+**Consumed by typio-linux** (input router).  These keys change how the
 Wayland frontend routes printable keys when the basic engine is active.
 
 | Key | Type | Default | Description |
@@ -129,7 +129,7 @@ model    = "sensevoice-small"   # directory name under ~/.local/share/typio/sher
 
 ---
 
-## `wayland.toml`
+## `platform.toml`
 
 ### `[display]`
 
@@ -165,7 +165,7 @@ channel.
 
 | File | Hot-reload | Notes |
 |------|------------|-------|
-| `wayland.toml` | ✅ Yes | The Wayland frontend watches the config directory via inotify.  Any `CLOSE_WRITE`, `MOVED_TO`, or attribute change triggers a debounced reload (100 ms). |
+| `platform.toml` | ✅ Yes | The Wayland frontend watches the config directory via inotify.  Any `CLOSE_WRITE`, `MOVED_TO`, or attribute change triggers a debounced reload (100 ms). |
 | `core.toml` | ✅ Yes | libtypio reloads the file on the same inotify event.  The frontend then re-queries shortcuts, voice engine, and notification settings. |
 
 Keys that **require a restart** to take effect:
@@ -177,5 +177,5 @@ Keys that **require a restart** to take effect:
 ## See also
 
 - `data/core.toml.example` — annotated starter for framework policy
-- `data/wayland.toml.example` — annotated starter for Panel styling
+- `data/platform.toml.example` — annotated starter for Panel styling
 - [Engine Discovery Reference](engine-discovery.md) — how engine plugins are found and named

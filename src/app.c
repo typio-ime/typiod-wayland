@@ -31,10 +31,10 @@ static const char *typio_app_build_display_string(void) {
     if (buf[0])
         return buf;
     if (TYPIO_BUILD_SOURCE_LABEL[0]) {
-        snprintf(buf, sizeof(buf), "typio-wayland %s (%s)",
+        snprintf(buf, sizeof(buf), "typio-linux %s (%s)",
                  TYPIO_VERSION, TYPIO_BUILD_SOURCE_LABEL);
     } else {
-        snprintf(buf, sizeof(buf), "typio-wayland %s", TYPIO_VERSION);
+        snprintf(buf, sizeof(buf), "typio-linux %s", TYPIO_VERSION);
     }
     return buf;
 }

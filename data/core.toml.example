@@ -8,7 +8,7 @@
 # runtime state under $XDG_STATE_HOME/typio, so an installation may start
 # with no configured engine and resume the last active one later.
 #
-# Frontend styling (Panel theme, fonts, colours) lives in wayland.toml next
+# Frontend styling (Panel theme, fonts, colours) lives in platform.toml next
 # to this file.
 #
 # For the full reference of every key, see docs/reference/configuration.md.
@@ -27,7 +27,7 @@
 # keyboard.disabled = "mozc"
 # voice.disabled = "whisper"
 
-# ── Engine routing (consumed by typio-wayland) ───────────────────────
+# ── Engine routing (consumed by typio-linux) ───────────────────────
 # These keys change how the Wayland frontend routes keys when the basic
 # engine is active.  They are NOT owned by the engine plugin itself.
 
@@ -77,7 +77,7 @@
 # model = "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17"
 
 # ── Notifications ────────────────────────────────────────────────────
-# Consumed by typio-wayland.  Controls startup health notifications and
+# Consumed by typio-linux.  Controls startup health notifications and
 # runtime toast behaviour.
 
 # [notifications]

@@ -1,4 +1,4 @@
-project('typio-wayland', 'c',
+project('typio-linux', 'c',
   version: '0.1.16',
   default_options: ['warning_level=2', 'c_std=c23'],
   meson_version: '>=1.0.0',
@@ -154,8 +154,8 @@ install_subdir('data/icons/hicolor', install_dir: datadir / 'icons')
 if import('fs').is_file('data/core.toml.example')
     install_data('data/core.toml.example', install_dir: datadir / 'typio')
 endif
-if import('fs').is_file('data/wayland.toml.example')
-    install_data('data/wayland.toml.example', install_dir: datadir / 'typio')
+if import('fs').is_file('data/platform.toml.example')
+    install_data('data/platform.toml.example', install_dir: datadir / 'typio')
 endif
 
 # ── Post-install hook ──────────────────────────────────────────────────────

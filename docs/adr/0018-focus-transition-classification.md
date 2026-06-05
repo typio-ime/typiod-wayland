@@ -2,7 +2,7 @@
 
 - **Status**: Accepted
 - **Date**: 2026-06-01
-- **Deciders**: typio-wayland maintainers
+- **Deciders**: typio-linux maintainers
 
 ## Context
 

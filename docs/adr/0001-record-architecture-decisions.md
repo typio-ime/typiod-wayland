@@ -6,7 +6,7 @@
 
 ## Context
 
-`typio-wayland` is the Wayland host binary (`typiod`) for the Typio input method: it owns the `zwp_input_method_v2` protocol surface, the event loop, the candidate-popup GPU pipeline, the D-Bus adapter, and the platform plugin loader. The framework core lives in `libtypio` and is platform-neutral; this repository contains everything Wayland- and Vulkan-shaped that the daemon does on top of it. As the host grows, design choices accumulate that future contributors must understand.
+`typio-linux` is the Wayland host binary (`typiod`) for the Typio input method: it owns the `zwp_input_method_v2` protocol surface, the event loop, the candidate-popup GPU pipeline, the D-Bus adapter, and the platform plugin loader. The framework core lives in `libtypio` and is platform-neutral; this repository contains everything Wayland- and Vulkan-shaped that the daemon does on top of it. As the host grows, design choices accumulate that future contributors must understand.
 
 ## Decision
 

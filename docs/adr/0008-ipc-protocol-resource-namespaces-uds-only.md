@@ -22,7 +22,7 @@ Replace the IPC contract with a single, resource-oriented, camelCase JSON-RPC pr
 
 ### Transport
 
-- **UDS only.** `$XDG_RUNTIME_DIR/typio/daemon.sock`, 4-byte big-endian length prefix + JSON-RPC 2.0 body — unchanged framing. The D-Bus dependency in `typio-wayland` is retained for `StatusNotifierItem` (systray), but the `org.typio.InputMethod1` control interface and `state/dbus.c`, `state/dbus.h`, `ipc/dbus_protocol.h` are removed.
+- **UDS only.** `$XDG_RUNTIME_DIR/typio/daemon.sock`, 4-byte big-endian length prefix + JSON-RPC 2.0 body — unchanged framing. The D-Bus dependency in `typio-linux` is retained for `StatusNotifierItem` (systray), but the `org.typio.InputMethod1` control interface and `state/dbus.c`, `state/dbus.h`, `ipc/dbus_protocol.h` are removed.
 - **Connection model.** UDS connections become long-lived; clients may issue any number of request/response method calls and, optionally, subscribe to event streams over the same connection.
 
 ### Methods
@@ -98,5 +98,5 @@ There are no shims and no deprecation aliases. `typioctl` (Phase D) and `typio-s
 ## Related
 
 - [ADR-0007: D-Bus adapter as a thin transport over `TypioStatusService`](0007-dbus-adapter-over-status-service.md) — superseded for the control surface (D-Bus removed); the adapter's "thin shim over service" principle survives as a UDS-only single source of truth.
-- libtypio ADR-0007: IPC ownership — control surface to host, engine backend deferred — establishes that this contract lives in `typio-wayland`.
+- libtypio ADR-0007: IPC ownership — control surface to host, engine backend deferred — establishes that this contract lives in `typio-linux`.
 - libtypio ADR-0008: engine properties unified into the config schema layer — makes the generic engine config surface usable so engine-specific methods can be removed.

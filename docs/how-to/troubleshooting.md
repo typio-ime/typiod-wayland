@@ -84,7 +84,7 @@ That asks the daemon to rerun librime deployment and regenerate `~/.local/share/
 
 If the Panel looks blurry on a 2x HiDPI output, make sure you are running a recent build. The Panel now follows `wl_surface.enter/leave` and `wl_output.scale`, so integer output scales should render sharply after a restart of the daemon.
 
-If the Panel theme does not match your desktop, set one explicitly in `~/.config/typio/wayland.toml`:
+If the Panel theme does not match your desktop, set one explicitly in `~/.config/typio/platform.toml`:
 
 ```toml
 [display]

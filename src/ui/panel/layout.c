@@ -506,7 +506,7 @@ void panel_config_load(PanelConfig *cfg, TypioInstance *instance) {
     snprintf(cfg->font_family, sizeof(cfg->font_family), "Sans");
 
     /*
-     * Display settings live in `wayland.toml` next to libtypio's `core.toml`
+     * Display settings live in `platform.toml` next to libtypio's `core.toml`
      * — the frontend, not the framework, owns panel styling. Load it on demand
      * from the instance's config dir. Missing file is fine: defaults above
      * remain in effect.
@@ -515,7 +515,7 @@ void panel_config_load(PanelConfig *cfg, TypioInstance *instance) {
         const char *config_dir = typio_instance_get_config_dir(instance);
         if (config_dir && *config_dir) {
             char path[PATH_MAX];
-            if (snprintf(path, sizeof(path), "%s/wayland.toml", config_dir)
+            if (snprintf(path, sizeof(path), "%s/platform.toml", config_dir)
                 < (int)sizeof(path)) {
                 display_cfg = typio_config_load_file(path);
             }

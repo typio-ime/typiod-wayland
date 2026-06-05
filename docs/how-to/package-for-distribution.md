@@ -1,6 +1,6 @@
 # How to Package for Distribution
 
-Build and install `typio-wayland` for system-wide or package-manager distribution.
+Build and install `typio-linux` for system-wide or package-manager distribution.
 
 ## Build a release binary
 
@@ -42,7 +42,7 @@ meson setup build --prefix=/usr --buildtype=release
 | `typio.service` | `<prefix>/<libdir>/systemd/user/` | systemd user service unit that runs the daemon |
 | `hicolor/*` | `<datadir>/icons/` | Status and tray icons |
 | `core.toml.example` | `<datadir>/typio/` | Example core configuration |
-| `wayland.toml.example` | `<datadir>/typio/` | Example Wayland frontend configuration |
+| `platform.toml.example` | `<datadir>/typio/` | Example Wayland frontend configuration |
 
 ## Runtime dependencies
 
@@ -79,7 +79,7 @@ Copy the example files to the system or user config directory and edit them:
 ```bash
 mkdir -p /etc/typio
 cp <datadir>/typio/core.toml.example /etc/typio/core.toml
-cp <datadir>/typio/wayland.toml.example /etc/typio/wayland.toml
+cp <datadir>/typio/platform.toml.example /etc/typio/platform.toml
 ```
 
 Or per-user:
@@ -87,7 +87,7 @@ Or per-user:
 ```bash
 mkdir -p ~/.config/typio
 cp <datadir>/typio/core.toml.example ~/.config/typio/core.toml
-cp <datadir>/typio/wayland.toml.example ~/.config/typio/wayland.toml
+cp <datadir>/typio/platform.toml.example ~/.config/typio/platform.toml
 ```
 
 See [Configuration Reference](../reference/configuration.md) for key meanings.

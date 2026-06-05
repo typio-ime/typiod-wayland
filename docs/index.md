@@ -10,10 +10,10 @@ The Linux/Wayland host for the [Typio](../typio) input method framework. This re
 - **[Reference](reference/)** — Lookup-oriented API, config, and protocol documentation.
   - [Glossary](reference/glossary.md) — Canonical project terms with definitions and sources
   - [IPC Protocol Reference](reference/ipc-protocol.md) — TIP v1 (UDS + JSON-RPC)
-  - [Configuration Reference](reference/configuration.md) — `core.toml` and `wayland.toml` keys, reload behaviour, and file structure
+  - [Configuration Reference](reference/configuration.md) — `core.toml` and `platform.toml` keys, reload behaviour, and file structure
   - [Engine Discovery Reference](reference/engine-discovery.md) — search path, file-name rules, icons
 - **[Explanation](explanation/)** — Understanding-oriented design documents.
-  - [Project Scope: typio-wayland vs. libtypio](explanation/project-scope.md)
+  - [Project Scope: typio-linux vs. libtypio](explanation/project-scope.md)
   - [Wayland Input Method Protocol](explanation/wayland-input-method.md)
   - [Input-Method Session](explanation/input-method-session.md) — Disambiguates the three layers of "session"
   - [Session Controller](explanation/session-controller.md) — Derived-state, idempotent-diff lifecycle model

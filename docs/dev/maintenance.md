@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This manual documents the maintenance rules for typio-wayland's Wayland keyboard pipeline. Its goal is to keep the implementation safe, robust, predictable, and easy to extend without reintroducing stale-key bugs or asymmetric key sequences.
+This manual documents the maintenance rules for typio-linux's Wayland keyboard pipeline. Its goal is to keep the implementation safe, robust, predictable, and easy to extend without reintroducing stale-key bugs or asymmetric key sequences.
 
 Use this document together with the [Wayland Input Method Protocol](../explanation/wayland-input-method.md) and [Input-Method Session](../explanation/input-method-session.md) when changing keyboard handling, engine interaction, or focus lifecycle code.
 
@@ -225,12 +225,12 @@ Candidate data travels through three ownership layers:
 
 1. **Engine** (RIME) owns the raw candidate list.
 2. **libtypio** (`content.rs`) copies into `TypioComposition`.
-3. **typio-wayland** (`input_method.c`) copies into `TypioCandidateList` snapshot.
+3. **typio-linux** (`input_method.c`) copies into `TypioCandidateList` snapshot.
 
 To reduce churn:
 
 - libtypio short-circuits when only `selected`/`cursor_pos` changed (selection-only navigation).
-- typio-wayland short-circuits the snapshot deep-copy when content is identical (`candidate_snapshot_equal_content`).
+- typio-linux short-circuits the snapshot deep-copy when content is identical (`candidate_snapshot_equal_content`).
 - When extending the composition or snapshot structs, preserve the equality helpers. A missing field in the equality check causes unnecessary deep-copies; an incorrect check causes stale UI.
 
 ### External Factors

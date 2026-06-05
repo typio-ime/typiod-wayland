@@ -1,14 +1,14 @@
-# Project Scope: typio-wayland vs. libtypio
+# Project Scope: typio-linux vs. libtypio
 
-This document clarifies what typio-wayland is responsible for, what it is not,
+This document clarifies what typio-linux is responsible for, what it is not,
 and where the boundary with [libtypio](../../libtypio) lies. It is intended to
 prevent the common confusion between the two projects and to explain why
-typio-wayland carries a UX responsibility that neither a generic OS adapter nor
+typio-linux carries a UX responsibility that neither a generic OS adapter nor
 a pure business-logic library could fulfill alone.
 
 ## The Two Projects
 
-| | typio-wayland | libtypio |
+| | typio-linux | libtypio |
 |---|---|---|
 | **Role** | Platform host (OS adapter) | Core framework (business logic) |
 | **Language** | C23 | Rust + hand-written C ABI |
@@ -17,7 +17,7 @@ a pure business-logic library could fulfill alone.
 | **Contains engines** | No — discovers and loads `.so` plugins at runtime | No — provides the engine ABI and registry; engines are separate repos |
 | **Process** | `typio` daemon binary | Linked as a static/shared library inside `typio` |
 
-The dependency direction is one-way: typio-wayland links libtypio and calls its
+The dependency direction is one-way: typio-linux links libtypio and calls its
 APIs. libtypio never reaches back into the host except through callbacks the
 host registers.
 
@@ -69,20 +69,20 @@ updates the tray, panel, and IPC event subscribers.
                │ host API + observer callbacks
                ▼
 ┌────────────────────────────────────────────────────────────┐
-│  typio-wayland                                             │
+│  typio-linux                                             │
 │  Wayland input-method, Vulkan panel, event loop            │
 │  Plugin discovery, tray, IPC, voice capture, config watch  │
 └────────────────────────────────────────────────────────────┘
 ```
 
-## What typio-wayland Owns
+## What typio-linux Owns
 
 ### OS capability abstraction
 
-typio-wayland adapts the Linux/Wayland desktop to the portable interfaces
+typio-linux adapts the Linux/Wayland desktop to the portable interfaces
 libtypio defines:
 
-| OS capability | typio-wayland module | Abstracted as |
+| OS capability | typio-linux module | Abstracted as |
 |---|---|---|
 | Keyboard input | Wayland keyboard grab → `TypioKeyEvent` | Input context key feed |
 | Text output | Engine callbacks → `zwp_input_method_v2` commit/preedit | Compositor protocol |
@@ -98,7 +98,7 @@ libtypio defines:
 
 ### UX consistency
 
-Because typio-wayland sits between the operating system and the user, it bears
+Because typio-linux sits between the operating system and the user, it bears
 a responsibility that neither layer above (compositor) nor below (libtypio)
 can fulfill: **ensuring a consistent, responsive user experience across all
 the surfaces the user actually sees and touches.**
@@ -151,7 +151,7 @@ only make sense on one operating system belongs in the host.
 
 When deciding where a change belongs, apply these tests:
 
-| Question | If yes, it belongs in typio-wayland |
+| Question | If yes, it belongs in typio-linux |
 |---|---|
 | Does it require a Wayland protocol object? | Yes |
 | Does it require GPU rendering or a GPU resource? | Yes |
@@ -178,19 +178,19 @@ When deciding where a change belongs, apply these tests:
 ## Common Confusion Points
 
 **"I want to add a new input method."** Write an engine plugin against
-`typio/abi/abi.h`. Neither typio-wayland nor libtypio needs to change.
+`typio/abi/abi.h`. Neither typio-linux nor libtypio needs to change.
 
-**"I want the panel to show a new kind of content."** This is typio-wayland.
+**"I want the panel to show a new kind of content."** This is typio-linux.
 The panel content model (`TypioPanelContent`) is GPU-free and testable, but
 the surface, rendering, and positioning are Wayland-specific.
 
 **"I want to change how engines are switched (Ctrl+Shift, next/prev)."** The
 trigger mechanism (keyboard shortcut detection, modifier buffering) is in
-typio-wayland. The registry operation (`next_keyboard`) is in libtypio.
+typio-linux. The registry operation (`next_keyboard`) is in libtypio.
 
 **"I want to add a new config key."** If the key is consumed by engines, define
 it in libtypio's config schema. If the key controls a host behavior (panel
-font, tray visibility, GPU options), it belongs in typio-wayland's runtime
+font, tray visibility, GPU options), it belongs in typio-linux's runtime
 config.
 
 **"I want to port Typio to macOS."** Write a new host that links libtypio,
@@ -199,7 +199,7 @@ libtypio stays the same; engine plugins stay the same.
 
 ## See also
 
-- [Panel Architecture](panel-architecture.md) — the UI surface typio-wayland renders.
+- [Panel Architecture](panel-architecture.md) — the UI surface typio-linux renders.
 - [Control Surfaces](control-surfaces.md) — tray, IPC bus, state controller.
 - [Event Loop Scheduling](event-loop-scheduling.md) — how the event loop preserves responsiveness.
 - [Input-Method Session](input-method-session.md) — session lifecycle and recovery paths.

@@ -40,7 +40,7 @@ The right names are settled by **what each thing is**, not by what any other
 project calls it. (That this vocabulary is also conventional across unrelated
 IME stacks — IBus/macOS/Windows say "candidate window", Fcitx5 says "input
 panel" — is at most corroboration that it reads naturally to newcomers; it is
-not an authority this project follows. typio-wayland is unrelated to those
+not an authority this project follows. typio-linux is unrelated to those
 stacks.)
 
 This ADR is written under a **greenfield mandate**: define the ideal vocabulary

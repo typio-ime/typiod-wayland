@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The word **session** appears at three different layers in typio-wayland. This
+The word **session** appears at three different layers in typio-linux. This
 document disambiguates them and defines the lifecycle of each. It exists so
 readers can answer "which session?" precisely when debugging focus, grab, or
 preedit bugs.

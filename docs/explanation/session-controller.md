@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document describes the session-controller lifecycle model for typio-wayland's Wayland input-method path. It replaces the older stored-phase FSM (`INACTIVE → ACTIVATING → ACTIVE → DEACTIVATING`) plus debounced reconciler with a derived-state, idempotent-diff pipeline.
+This document describes the session-controller lifecycle model for typio-linux's Wayland input-method path. It replaces the older stored-phase FSM (`INACTIVE → ACTIVATING → ACTIVE → DEACTIVATING`) plus debounced reconciler with a derived-state, idempotent-diff pipeline.
 
 The session controller is not a new subsystem added on top of the existing code. It is a **restructuring** of the same responsibilities — grab create/destroy, focus_in/focus_out, keymap epoch scrubbing — into a shape that eliminates drift between stored state and observed reality.
 

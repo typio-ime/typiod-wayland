@@ -1,7 +1,11 @@
-# typio-wayland
+# typio-linux
 
-The Linux/Wayland host for the [Typio](https://github.com/) input method
-framework. Installs the `typio` binary.
+**Typio for Linux** — a Wayland-native input method host for the
+[Typio](https://github.com/) input method framework. Installs the `typio`
+binary.
+
+> Currently Wayland-only (`text-input-v2` / `input-method-v2`). X11 is not
+> supported and not planned — this host targets the modern Wayland desktop.
 
 It embeds [libtypio](../libtypio) and provides the platform adapter layer:
 the Wayland text-input/input-method v2 client, virtual-keyboard bridge,

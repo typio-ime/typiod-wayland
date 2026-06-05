@@ -48,9 +48,9 @@ Three fixes, each in a different layer:
 `display_label[8]` → `display_label[128]`. Schema names are arbitrary-length
 UTF-8 strings; the buffer must accommodate them.
 
-### 2. Per-glyph fallback with `FT_Get_Char_Index` (typio-wayland)
+### 2. Per-glyph fallback with `FT_Get_Char_Index` (typio-linux)
 
-**File:** `typio-wayland/src/ui/panel/text_shaper.c`
+**File:** `typio-linux/src/ui/panel/text_shaper.c`
 
 When the primary font produces `.notdef` (glyph ID 0) for a shaped glyph, the
 shaper now:
@@ -80,7 +80,7 @@ it correctly resolves supplementary-plane codepoints.
 
 ### 3. Format-12 charmap selection on font load
 
-**File:** `typio-wayland/src/ui/panel/text_shaper.c`, `get_or_create_font()`
+**File:** `typio-linux/src/ui/panel/text_shaper.c`, `get_or_create_font()`
 
 After `FT_New_Face`, iterate `face->num_charmaps` and select the first charmap
 with `FT_Get_CMap_Format() == 12` (segmented coverage, supports all Unicode).
@@ -91,7 +91,7 @@ the correct charmap.
 
 ### 4. CJK-aware primary font matching
 
-**File:** `typio-wayland/src/ui/panel/text_shaper.c`, `match_font_file()`
+**File:** `typio-linux/src/ui/panel/text_shaper.c`, `match_font_file()`
 
 After `FcFontMatch`, verify the matched font covers CJK (test for U+4E2D). If
 not, retry with an `FcCharSet` constraint requiring U+4E2D so Fontconfig

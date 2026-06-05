@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-ADRs are append-only records of significant design decisions in `typio-wayland` — the Wayland host (`typiod`) for the Typio input method. Once accepted, they are not edited; a new ADR supersedes an old one if a decision changes.
+ADRs are append-only records of significant design decisions in `typio-linux` — the Wayland host (`typiod`) for the Typio input method. Once accepted, they are not edited; a new ADR supersedes an old one if a decision changes.
 
 Decisions about the framework core (engine ABI, composition contract) live in the `libtypio` repository's ADR set.
 

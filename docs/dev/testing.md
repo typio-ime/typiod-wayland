@@ -47,7 +47,7 @@ export LD_LIBRARY_PATH=/absolute/path/to/libtypio/target/release:${LD_LIBRARY_PA
 ## Known test failures
 
 A small number of legacy host tests assume the **basic** keyboard engine is
-available inside the test process. Because `typio-wayland` loads engines as
+available inside the test process. Because `typio-linux` loads engines as
 host-side plugins (via `dlopen` of `libtypio_engine_*.so`), unit tests that
 do not explicitly register a mock engine or set `TYPIO_ENGINE_DIR` will not
 see **basic** and may fail or time out. This is a test-harness limitation,
