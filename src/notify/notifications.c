@@ -7,7 +7,10 @@
 
 #include "typio/abi/log.h"
 
-#include <dbus/dbus.h>
+#ifdef HAVE_LIBDBUS
+#  include <systemd/sd-bus.h>
+#endif
+
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
@@ -25,7 +28,9 @@ typedef struct TypioRecentNotification {
 } TypioRecentNotification;
 
 struct TypioNotifier {
-    DBusConnection *conn;
+#ifdef HAVE_LIBDBUS
+    sd_bus *bus;
+#endif
     TypioRecentNotification recent[TYPIO_NOTIFY_RECENT_CAP];
     size_t next_recent_slot;
 };
@@ -73,60 +78,72 @@ static bool notifier_is_rate_limited(TypioNotifier *notifier,
     return false;
 }
 
-static dbus_bool_t append_hints(DBusMessageIter *iter,
-                                TypioNotificationUrgency urgency) {
-    DBusMessageIter dict;
-    DBusMessageIter entry;
-    DBusMessageIter variant;
-    const char *urgency_key = "urgency";
+#ifdef HAVE_LIBDBUS
+/*
+ * Append the {sv} hints array carrying the urgency byte. sd-bus's
+ * append API takes type sigils and a pointer; an 'a{sv}' is built by
+ * entering the array, then the dict-entry, then the variant, then
+ * appending the byte, then closing them in reverse order. On any
+ * mid-construction failure we unwind the open containers and return
+ * a negative error.
+ */
+static int append_hints(sd_bus_message *m, TypioNotificationUrgency urgency) {
+    int r;
     unsigned char urgency_value = (unsigned char)urgency;
 
-    if (!dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "{sv}", &dict)) {
-        return FALSE;
-    }
-    if (!dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, nullptr, &entry)) {
-        return FALSE;
-    }
-    if (!dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &urgency_key)) {
-        return FALSE;
-    }
-    if (!dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "y", &variant)) {
-        return FALSE;
-    }
-    if (!dbus_message_iter_append_basic(&variant, DBUS_TYPE_BYTE, &urgency_value)) {
-        return FALSE;
-    }
-    if (!dbus_message_iter_close_container(&entry, &variant)) {
-        return FALSE;
-    }
-    if (!dbus_message_iter_close_container(&dict, &entry)) {
-        return FALSE;
-    }
-    return dbus_message_iter_close_container(iter, &dict);
+    r = sd_bus_message_open_container(m, 'a', "{sv}");
+    if (r < 0) return r;
+
+    r = sd_bus_message_open_container(m, 'e', "sv");
+    if (r < 0) goto fail_array;
+
+    r = sd_bus_message_append_basic(m, 's', "urgency");
+    if (r < 0) goto fail_entry;
+
+    r = sd_bus_message_open_container(m, 'v', "y");
+    if (r < 0) goto fail_entry;
+
+    r = sd_bus_message_append_basic(m, 'y', &urgency_value);
+    if (r < 0) goto fail_variant;
+
+    r = sd_bus_message_close_container(m);
+    if (r < 0) goto fail_variant; /* close the 'v' */
+
+    r = sd_bus_message_close_container(m);
+    if (r < 0) return r;          /* close the 'e' */
+
+    r = sd_bus_message_close_container(m);
+    return r;                     /* close the 'a' */
+
+fail_variant:
+    sd_bus_message_close_container(m); /* close 'v' (best-effort) */
+fail_entry:
+    sd_bus_message_close_container(m); /* close 'e' (best-effort) */
+fail_array:
+    sd_bus_message_close_container(m); /* close 'a' (best-effort) */
+    return r;
 }
+#endif
 
 TypioNotifier *typio_notifier_new(void) {
-    DBusError err;
     TypioNotifier *notifier;
+#ifdef HAVE_LIBDBUS
+    int r;
+#endif
 
     notifier = calloc(1, sizeof(*notifier));
     if (!notifier) {
         return nullptr;
     }
 
-    dbus_error_init(&err);
-    notifier->conn = dbus_bus_get(DBUS_BUS_SESSION, &err);
-    if (dbus_error_is_set(&err)) {
-        typio_log_warning("Desktop notifications unavailable: %s", err.message);
-        dbus_error_free(&err);
+#ifdef HAVE_LIBDBUS
+    r = sd_bus_open_user(&notifier->bus);
+    if (r < 0) {
+        typio_log_warning("Desktop notifications unavailable: %s", strerror(-r));
         free(notifier);
         return nullptr;
     }
-
-    if (!notifier->conn) {
-        free(notifier);
-        return nullptr;
-    }
+#endif
 
     return notifier;
 }
@@ -136,9 +153,11 @@ void typio_notifier_free(TypioNotifier *notifier) {
         return;
     }
 
-    if (notifier->conn) {
-        dbus_connection_unref(notifier->conn);
+#ifdef HAVE_LIBDBUS
+    if (notifier->bus) {
+        sd_bus_unref(notifier->bus);
     }
+#endif
     free(notifier);
 }
 
@@ -146,62 +165,77 @@ bool typio_notifier_send(TypioNotifier *notifier,
                          TypioNotificationUrgency urgency,
                          const char *summary,
                          const char *body) {
-    DBusMessage *msg;
-    DBusMessage *reply;
-    DBusMessageIter iter;
-    DBusMessageIter actions;
-    DBusError err;
+#ifdef HAVE_LIBDBUS
+    sd_bus_message *msg = nullptr;
+    sd_bus_message *reply = nullptr;
+    sd_bus_error err = SD_BUS_ERROR_NULL;
     const char *app_name = "Typio";
     const char *app_icon = "typio-keyboard-symbolic";
     const char *notification_summary = summary ? summary : "Typio";
     const char *notification_body = body ? body : "";
-    dbus_uint32_t replaces_id = 0;
-    int expire_timeout = urgency == TYPIO_NOTIFICATION_CRITICAL ? 0 : 12000;
+    uint32_t replaces_id = 0;
+    int32_t expire_timeout = urgency == TYPIO_NOTIFICATION_CRITICAL ? 0 : 12000;
+    int r;
 
-    if (!notifier || !notifier->conn || !summary || !*summary) {
+    if (!notifier || !notifier->bus || !summary || !*summary) {
         return false;
     }
 
-    msg = dbus_message_new_method_call(TYPIO_NOTIFY_SERVICE,
+    r = sd_bus_message_new_method_call(notifier->bus,
+                                       &msg,
+                                       TYPIO_NOTIFY_SERVICE,
                                        TYPIO_NOTIFY_PATH,
                                        TYPIO_NOTIFY_INTERFACE,
                                        "Notify");
-    if (!msg) {
+    if (r < 0) {
+        typio_log_debug("Notification send: failed to build message: %s", strerror(-r));
         return false;
     }
 
-    dbus_message_iter_init_append(msg, &iter);
-    if (!dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &app_name) ||
-        !dbus_message_iter_append_basic(&iter, DBUS_TYPE_UINT32, &replaces_id) ||
-        !dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &app_icon) ||
-        !dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &notification_summary) ||
-        !dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &notification_body)) {
-        dbus_message_unref(msg);
-        return false;
-    }
+    r = sd_bus_message_append(msg,
+                              "susss",
+                              app_name,
+                              replaces_id,
+                              app_icon,
+                              notification_summary,
+                              notification_body);
+    if (r < 0) goto fail;
 
-    if (!dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "s", &actions) ||
-        !dbus_message_iter_close_container(&iter, &actions) ||
-        !append_hints(&iter, urgency) ||
-        !dbus_message_iter_append_basic(&iter, DBUS_TYPE_INT32, &expire_timeout)) {
-        dbus_message_unref(msg);
-        return false;
-    }
+    /* actions: as (empty array) */
+    r = sd_bus_message_open_container(msg, 'a', "s");
+    if (r < 0) goto fail;
+    r = sd_bus_message_close_container(msg);
+    if (r < 0) goto fail;
 
-    dbus_error_init(&err);
-    reply = dbus_connection_send_with_reply_and_block(notifier->conn, msg, 1500, &err);
-    dbus_message_unref(msg);
+    /* hints: a{sv} */
+    r = append_hints(msg, urgency);
+    if (r < 0) goto fail;
 
-    if (dbus_error_is_set(&err)) {
+    /* expire_timeout: i */
+    r = sd_bus_message_append_basic(msg, 'i', &expire_timeout);
+    if (r < 0) goto fail;
+
+    r = sd_bus_call_method(notifier->bus, msg, 0, &err, &reply);
+    if (r < 0) {
         typio_log_debug("Notification send failed: %s", err.message);
-        dbus_error_free(&err);
-        return false;
+        sd_bus_error_free(&err);
+        goto fail;
     }
 
-    if (reply) {
-        dbus_message_unref(reply);
-    }
+    sd_bus_message_unref(msg);
+    sd_bus_message_unref(reply);
     return true;
+
+fail:
+    sd_bus_message_unref(msg);
+    return false;
+#else
+    (void)notifier;
+    (void)urgency;
+    (void)summary;
+    (void)body;
+    return false;
+#endif
 }
 
 bool typio_notifier_send_coalesced(TypioNotifier *notifier,
