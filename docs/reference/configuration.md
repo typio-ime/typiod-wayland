@@ -165,7 +165,7 @@ channel.
 
 | File | Hot-reload | Notes |
 |------|------------|-------|
-| `platform.toml` | ✅ Yes | The Wayland frontend watches the config directory via inotify.  Any `CLOSE_WRITE`, `MOVED_TO`, or attribute change triggers a debounced reload (100 ms). |
+| `platform.toml` | ✅ Yes | The Wayland frontend watches the config directory via inotify.  A `CLOSE_WRITE`, `MOVED_TO`, or attribute change **to `core.toml` or `platform.toml`** triggers a debounced reload (100 ms); editor swap/backup files and other directory churn are ignored. |
 | `core.toml` | ✅ Yes | libtypio reloads the file on the same inotify event.  The frontend then re-queries shortcuts, voice engine, and notification settings. |
 
 Keys that **require a restart** to take effect:

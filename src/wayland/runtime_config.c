@@ -172,8 +172,24 @@ static void runtime_config_schedule_reload(TypioWlFrontend *frontend) {
     }
 }
 
+/*
+ * Only these files in the config directory should trigger a reload. Watching
+ * the directory (required to catch atomic-rename saves) also surfaces editor
+ * swap/backup files (`.core.toml.swp`, `core.toml~`, `.#core.toml`, …) and any
+ * other churn; matching the final name keeps those out. Atomic-rename saves
+ * land as IN_MOVED_TO carrying the destination name, so matching the final
+ * name covers both in-place writes and temp-file-plus-rename saves.
+ */
+static bool config_event_is_relevant(const char *name, uint32_t len) {
+    if (len == 0) {
+        return false;
+    }
+    return strcmp(name, "core.toml") == 0 ||
+           strcmp(name, "platform.toml") == 0;
+}
+
 void typio_wl_frontend_handle_config_watch(TypioWlFrontend *frontend) {
-    char buffer[4096];
+    char buffer[4096] __attribute__((aligned(__alignof__(struct inotify_event))));
     ssize_t nread;
     bool should_reload = false;
     bool should_rearm = false;
@@ -182,18 +198,29 @@ void typio_wl_frontend_handle_config_watch(TypioWlFrontend *frontend) {
         return;
     }
 
+    const uint32_t relevant_mask = IN_CLOSE_WRITE | IN_MOVED_TO | IN_CREATE |
+                                   IN_DELETE | IN_DELETE_SELF | IN_MOVE_SELF |
+                                   IN_ATTRIB;
+
     while ((nread = read(frontend->config->watch_fd, buffer, sizeof(buffer))) > 0) {
         ssize_t offset = 0;
 
         while (offset < nread) {
             const struct inotify_event *event =
                 (const struct inotify_event *)(buffer + offset);
-            if ((event->mask & (IN_CLOSE_WRITE | IN_MOVED_TO | IN_CREATE | IN_DELETE |
-                                IN_DELETE_SELF | IN_MOVE_SELF | IN_ATTRIB)) != 0) {
-                should_reload = true;
-            }
+
             if ((event->mask & (IN_DELETE_SELF | IN_MOVE_SELF)) != 0) {
+                /* The watched directory itself was removed or moved: re-add the
+                 * watch and reload, since its contents may have changed. */
                 should_rearm = true;
+                should_reload = true;
+            } else if ((event->mask & relevant_mask) != 0) {
+                if (event->wd == frontend->config->engines_watch) {
+                    /* Engine plugin directory: keep the broad trigger. */
+                    should_reload = true;
+                } else if (config_event_is_relevant(event->name, event->len)) {
+                    should_reload = true;
+                }
             }
             offset += (ssize_t)sizeof(struct inotify_event) + event->len;
         }
