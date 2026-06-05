@@ -70,7 +70,7 @@ Notifications have no `id` and expect no reply. The client must have subscribed 
 |---|---|---|
 | C → S | `{}` | `{ protocolVersion, daemonVersion, capabilities: [string...] }` |
 
-`protocolVersion` is an integer (`1` in this release — the first version with an explicit handshake). `capabilities` enumerates the top-level namespaces the daemon supports — currently `["config", "engine", "daemon", "events"]`.
+`protocolVersion` is an integer (`2` in this release; v2 replaced `engine.use` / `engine.next` with the modality-explicit `keyboard.*` / `voice.*` verbs — ADR-0026). `capabilities` enumerates the top-level namespaces the daemon supports — currently `["config", "engine", "keyboard", "voice", "daemon", "events"]`.
 
 ### `config.*`
 
@@ -85,20 +85,26 @@ Notifications have no `id` and expect no reply. The client must have subscribed 
 
 `key` is a dotted path against the unified config tree. `value` is always a string in `config.set`; the daemon coerces using the schema's typed field. For an engine-namespaced key (`engines.<name>.<key>`) the daemon also delivers `on_config_change` to the owning engine (libtypio ADR-0008).
 
-### `engine.*`
+### `engine.*` / `keyboard.*` / `voice.*`
+
+The `engine.*` namespace is cross-modality and keyed by engine name (aggregate query + lifecycle). Activation and cycling are modality-explicit (ADR-0026): the keyboard and voice slots are orthogonal and simultaneously active, so each has its own verbs under `keyboard.*` / `voice.*`.
 
 | Method | params | result |
 |---|---|---|
 | `engine.list` | `{}` | `[{ name, kind, displayName, active }, ...]` |
 | `engine.describe` | `{ name }` | `{ name, kind, displayName, properties: [...], commands: [...] }` |
-| `engine.use` | `{ name }` | `{}` |
-| `engine.next` | `{ kind? }` | `{ active }` |
 | `engine.invoke` | `{ name, command, args? }` | `{}` |
 | `engine.load` | `{ path }` | `{ loaded, path }` |
 | `engine.unload` | `{ name }` | `{ unloaded, name }` |
 | `engine.reload` | `{ name, path? }` | `{ reloaded, name, path? }` |
+| `keyboard.use` | `{ name }` | `{}` |
+| `keyboard.next` | `{}` | `{ active }` |
+| `keyboard.prev` | `{}` | `{ active }` |
+| `voice.use` | `{ name }` | `{}` |
+| `voice.next` | `{}` | `{ active }` |
+| `voice.prev` | `{}` | `{ active }` |
 
-`kind` is `"keyboard"` or `"voice"`. `engine.next` defaults to keyboards when `kind` is omitted. Each property entry in `engine.describe` carries `{ key, type, value, label, choices? }`.
+`kind` (in `engine.list` / `engine.describe`) is `"keyboard"` or `"voice"`. `keyboard.use` / `voice.use` reject a `name` whose engine is not of the matching modality. Each property entry in `engine.describe` carries `{ key, type, value, label, choices? }`.
 
 `engine.load` loads a single engine plugin from an absolute `.so` path. `engine.unload` unregisters an engine by name (deactivating it first if active). `engine.reload` combines unload + load: if `path` is provided, loads from that exact path; if omitted, rescans the configured `engine_dirs` to find the engine by name (`libtypio_engine_<name>.so`).
 

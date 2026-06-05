@@ -29,7 +29,7 @@ Decisions about the framework core (engine ABI, composition contract) live in th
 | [ADR-0005](0005-unified-panel-backend.md) | Unified panel backend for candidate and status UI | Accepted (vocabulary formalised by ADR-0014) |
 | [ADR-0006](0006-resilient-candidate-popup-present.md) | Resilient candidate-popup GPU present | Accepted (amended by ADR-0010) |
 | [ADR-0007](0007-dbus-adapter-over-status-service.md) | D-Bus adapter as a thin transport over `TypioStatusService` | Superseded by ADR-0008 |
-| [ADR-0008](0008-ipc-protocol-resource-namespaces-uds-only.md) | TIP v1 — IPC Protocol with resource namespaces, UDS-only, push events | Accepted |
+| [ADR-0008](0008-ipc-protocol-resource-namespaces-uds-only.md) | TIP v1 — IPC Protocol with resource namespaces, UDS-only, push events | Accepted (engine verbs amended by ADR-0026) |
 | [ADR-0009](0009-long-term-performance-optimizations.md) | Long-term performance optimizations — font cache purging, composition short-circuit, and snapshot fast-path | Accepted |
 | [ADR-0010](0010-non-blocking-candidate-popup-present.md) | Non-blocking present mode for the candidate popup | Accepted (lag-cause attribution corrected by ADR-0013) |
 | [ADR-0011](0011-colour-independent-coverage-glyphs.md) | Colour-independent coverage glyph textures (draw-time tint) | Accepted (texture model superseded by ADR-0012; lag-cause attribution corrected by ADR-0013) |
@@ -46,6 +46,8 @@ Decisions about the framework core (engine ABI, composition contract) live in th
 | [ADR-0022](0022-panel-retry-result-owned-by-update.md) | Panel retry result owned by update | Accepted (amends ADR-0015) |
 | [ADR-0023](0023-panel-scheduler-state-machine.md) | Panel Scheduler State Machine | Accepted (amends ADR-0022) |
 | [ADR-0024](0024-idle-driven-loop-and-demand-gated-watchdog.md) | Idle-driven event loop and demand-gated watchdog | Accepted (amends ADR-0004) |
+| [ADR-0025](0025-engine-discovery-search-path.md) | Engine discovery — ordered search path, no user-level auto-scan | Accepted |
+| [ADR-0026](0026-modality-explicit-engine-control-surface.md) | Modality-explicit engine control surface (`keyboard.*` / `voice.*`) | Accepted (amends ADR-0008) |
 
 ## Looking for something else?
 

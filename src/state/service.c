@@ -107,6 +107,10 @@ static char *handle_hello([[maybe_unused]] TypioStatusService *svc,
     TIP_JSON_COMMA(b);
     tip_json_builder_append_string(b, "engine");
     TIP_JSON_COMMA(b);
+    tip_json_builder_append_string(b, "keyboard");
+    TIP_JSON_COMMA(b);
+    tip_json_builder_append_string(b, "voice");
+    TIP_JSON_COMMA(b);
     tip_json_builder_append_string(b, "daemon");
     TIP_JSON_COMMA(b);
     tip_json_builder_append_string(b, "events");
@@ -536,7 +540,10 @@ static char *handle_engine_describe(TypioStatusService *svc, const char *params,
     return response;
 }
 
-static char *handle_engine_use(TypioStatusService *svc, const char *params, int id)
+/* keyboard.use / voice.use (ADR-0026). The verb fixes the modality; the named
+ * engine must match it. No kind inference. */
+static char *handle_modal_use(TypioStatusService *svc, const char *params,
+                              int id, bool voice)
 {
     char *name = tip_json_extract_string(params, "name");
     if (!name || !*name) {
@@ -553,13 +560,20 @@ static char *handle_engine_use(TypioStatusService *svc, const char *params, int 
         free(name);
         return tip_json_build_error(id, RPC_INVALID_PARAMS, "Unknown engine");
     }
-    TypioResult r = info->type == TYPIO_ENGINE_TYPE_VOICE
-                        ? typio_registry_set_active_voice(reg, name)
-                        : typio_registry_set_active_keyboard(reg, name);
+    bool is_voice = info->type == TYPIO_ENGINE_TYPE_VOICE;
     typio_engine_info_free((TypioEngineInfo *)info);
+    if (is_voice != voice) {
+        free(name);
+        return tip_json_build_error(id, RPC_INVALID_PARAMS,
+                                    voice ? "Not a voice engine"
+                                          : "Not a keyboard engine");
+    }
+    TypioResult r = voice ? typio_registry_set_active_voice(reg, name)
+                          : typio_registry_set_active_keyboard(reg, name);
     if (r != TYPIO_OK) {
         free(name);
-        return tip_json_build_error(id, RPC_INTERNAL_ERROR, "engine.use failed");
+        return tip_json_build_error(id, RPC_INTERNAL_ERROR,
+                                    voice ? "voice.use failed" : "keyboard.use failed");
     }
     if (svc && svc->instance)
         typio_instance_save_config(svc->instance);
@@ -567,20 +581,22 @@ static char *handle_engine_use(TypioStatusService *svc, const char *params, int 
     return tip_json_build_response(id, "{}");
 }
 
-static char *handle_engine_next(TypioStatusService *svc,
-                                const char *params, int id)
+/* keyboard.next/prev and voice.next/prev (ADR-0026). */
+static char *handle_modal_cycle(TypioStatusService *svc, int id,
+                                bool voice, bool forward)
 {
     TypioRegistry *reg = svc_registry(svc);
     if (!reg) return tip_json_build_error(id, RPC_INTERNAL_ERROR, "no registry");
 
-    char *kind = tip_json_extract_string(params, "kind");
-    bool voice = kind && strcmp(kind, "voice") == 0;
-    free(kind);
-
-    TypioResult r = voice ? typio_registry_next_voice(reg)
-                          : typio_registry_next_keyboard(reg);
+    TypioResult r;
+    if (voice)
+        r = forward ? typio_registry_next_voice(reg)
+                    : typio_registry_prev_voice(reg);
+    else
+        r = forward ? typio_registry_next_keyboard(reg)
+                    : typio_registry_prev_keyboard(reg);
     if (r != TYPIO_OK)
-        return tip_json_build_error(id, RPC_INTERNAL_ERROR, "engine.next failed");
+        return tip_json_build_error(id, RPC_INTERNAL_ERROR, "cycle failed");
 
     char *active = voice ? typio_registry_get_active_voice(reg)
                          : typio_registry_get_active_keyboard(reg);
@@ -707,7 +723,9 @@ static char *handle_engine_reload(TypioStatusService *svc, const char *params, i
         return tip_json_build_error(id, RPC_INTERNAL_ERROR, "no registry");
     }
 
-    const char *const *engine_dirs = typio_engine_dirs_build(nullptr);
+    /* Reload resolves by name against $TYPIO_ENGINE_PATH + the system dir;
+     * it has no access to the daemon's --engine-dir list (ADR-0025). */
+    const char *const *engine_dirs = typio_engine_dirs_build(nullptr, 0);
     if (!typio_plugin_reload(reg, name, path, engine_dirs)) {
         typio_engine_dirs_free(engine_dirs);
         free(name); free(path);
@@ -880,10 +898,18 @@ char *typio_status_service_handle(TypioStatusService *svc,
         return handle_engine_list(svc, params, id);
     if (strcmp(method, TYPIO_IPC_METHOD_ENGINE_DESCRIBE) == 0)
         return handle_engine_describe(svc, params, id);
-    if (strcmp(method, TYPIO_IPC_METHOD_ENGINE_USE) == 0)
-        return handle_engine_use(svc, params, id);
-    if (strcmp(method, TYPIO_IPC_METHOD_ENGINE_NEXT) == 0)
-        return handle_engine_next(svc, params, id);
+    if (strcmp(method, TYPIO_IPC_METHOD_KEYBOARD_USE) == 0)
+        return handle_modal_use(svc, params, id, false);
+    if (strcmp(method, TYPIO_IPC_METHOD_VOICE_USE) == 0)
+        return handle_modal_use(svc, params, id, true);
+    if (strcmp(method, TYPIO_IPC_METHOD_KEYBOARD_NEXT) == 0)
+        return handle_modal_cycle(svc, id, false, true);
+    if (strcmp(method, TYPIO_IPC_METHOD_KEYBOARD_PREV) == 0)
+        return handle_modal_cycle(svc, id, false, false);
+    if (strcmp(method, TYPIO_IPC_METHOD_VOICE_NEXT) == 0)
+        return handle_modal_cycle(svc, id, true, true);
+    if (strcmp(method, TYPIO_IPC_METHOD_VOICE_PREV) == 0)
+        return handle_modal_cycle(svc, id, true, false);
     if (strcmp(method, TYPIO_IPC_METHOD_ENGINE_INVOKE) == 0)
         return handle_engine_invoke(svc, params, id);
     if (strcmp(method, TYPIO_IPC_METHOD_ENGINE_LOAD) == 0)
