@@ -38,7 +38,7 @@ typedef struct TypioApp {
 
 bool typio_app_init(TypioApp *app,
                            const TypioInstanceConfig *config,
-                           bool verbose,
+                           int verbosity,
                            char *argv[]);
 int typio_app_run(TypioApp *app);
 void typio_app_shutdown(TypioApp *app);

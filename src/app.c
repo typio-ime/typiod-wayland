@@ -516,7 +516,7 @@ static void typio_install_signal_handlers(TypioApp *app) {
 
 bool typio_app_init(TypioApp *app,
                            const TypioInstanceConfig *config,
-                           bool verbose,
+                           int verbosity,
                            char *argv[]) {
     TypioInstanceConfig instance_config = {};
     TypioResult result;
@@ -541,7 +541,12 @@ bool typio_app_init(TypioApp *app,
      */
     typio_logger_init();
     typio_logger_set_callback(typio_log_callback, app);
-    typio_logger_set_level(verbose ? TYPIO_LOG_DEBUG : TYPIO_LOG_INFO);
+    /* Verbosity counts from repeated -v: 0 info, 1 debug, 2+ trace. TRACE
+     * unlocks the Wayland UI/anchor/session traces used to diagnose panel and
+     * indicator timing. */
+    typio_logger_set_level(verbosity >= 2 ? TYPIO_LOG_TRACE
+                           : verbosity >= 1 ? TYPIO_LOG_DEBUG
+                           : TYPIO_LOG_INFO);
 
     app->instance = typio_instance_new_with_config(&instance_config);
     if (!app->instance) {

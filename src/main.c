@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
     options.instance_config.engine_dirs = engine_dirs;
     options.instance_config.plugin_loader = typio_engine_loader_load_dir;
 
-    bool ok = typio_app_init(&app, &options.instance_config, options.verbose, argv);
+    bool ok = typio_app_init(&app, &options.instance_config, options.verbosity, argv);
     /* new_with_config copied the dir strings into the instance; safe to free. */
     typio_engine_dirs_free(engine_dirs);
     /* Free the -E accumulator array; its entries are borrowed argv pointers. */

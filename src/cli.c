@@ -40,7 +40,7 @@ void typio_print_help(const char *prog) {
     printf("  -c, --config DIR    Configuration directory\n");
     printf("  -d, --data DIR      Data directory\n");
     printf("  -E, --engine-dir DIR Engine directory (repeatable; highest precedence)\n");
-    printf("  -v, --verbose       Enable verbose logging\n");
+    printf("  -v, --verbose       Increase logging verbosity (-v debug, -vv trace)\n");
     printf("  -h, --help          Show this help message\n");
     printf("  --version           Show version information\n");
 }
@@ -84,7 +84,7 @@ int typio_parse_args(TypioOptions *options, int argc, char *argv[]) {
                 break;
             }
             case 'v':
-                options->verbose = true;
+                options->verbosity++;
                 break;
             case 'h':
                 typio_print_help(argv[0]);

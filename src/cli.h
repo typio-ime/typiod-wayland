@@ -16,7 +16,9 @@ typedef struct TypioOptions {
      *  before init — see ADR-0025. */
     const char **engine_dirs;
     size_t engine_dir_count;
-    bool verbose;
+    /** Logging verbosity, counted from repeated -v: 0 = info (default),
+     *  1 (-v) = debug, 2+ (-vv) = trace. */
+    int verbosity;
 } TypioOptions;
 
 void typio_options_init(TypioOptions *options);
