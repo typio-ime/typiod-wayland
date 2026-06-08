@@ -280,7 +280,7 @@ static void typio_wl_vk_trigger_fail_safe(TypioWlFrontend *frontend,
               last_keymap_age_ms,
               last_forward_age_ms,
               typio_wl_grab_resource_state_name(
-                  typio_wl_session_observe(frontend).grab));
+                  typio_wl_focus_observe(frontend).grab));
     if (frontend->keyboard) {
         typio_wl_keyboard_release_grab(frontend->keyboard);
     }

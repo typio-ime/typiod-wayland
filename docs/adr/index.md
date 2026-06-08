@@ -24,7 +24,7 @@ Decisions about the framework core (engine ABI, composition contract) live in th
 |-----|-------|--------|
 | [ADR-0001](0001-record-architecture-decisions.md) | Record Architecture Decisions | Accepted |
 | [ADR-0002](0002-wayland-input-method-v2.md) | Adopt `zwp_input_method_v2` as the host protocol | Accepted |
-| [ADR-0003](0003-session-controller-reduce-diff.md) | Session controller — derived state, idempotent diff | Accepted |
+| [ADR-0003](0003-session-controller-reduce-diff.md) | Session controller — derived state, idempotent diff | Accepted (component renamed *focus controller*, 2026-06-08) |
 | [ADR-0004](0004-event-loop-scheduling-and-watchdog.md) | Event-loop scheduling and watchdog | Accepted (idle behaviour amended by ADR-0024) |
 | [ADR-0005](0005-unified-panel-backend.md) | Unified panel backend for candidate and status UI | Accepted (vocabulary formalised by ADR-0014) |
 | [ADR-0006](0006-resilient-candidate-popup-present.md) | Resilient candidate-popup GPU present | Accepted (amended by ADR-0010) |

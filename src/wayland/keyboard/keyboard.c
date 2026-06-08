@@ -63,8 +63,8 @@ static void trace_key(TypioWlKeyboard *kb, const char *stage,
 static const char *guard_reason(TypioWlFrontend *fe) {
     if (!fe) return "no_frontend";
     if (!fe->session) return "no_session";
-    TypioWlActualState actual = typio_wl_session_observe(fe);
-    if (!typio_wl_session_can_route_keys(&actual))
+    TypioWlActualState actual = typio_wl_focus_observe(fe);
+    if (!typio_wl_focus_can_route_keys(&actual))
         return "lifecycle_not_active";
     if (!fe->session->ctx) return "no_context";
     if (!typio_input_context_is_focused(fe->session->ctx)) return "not_focused";
@@ -82,7 +82,7 @@ static void guard_trigger_failsafe(TypioWlKeyboard *kb, const char *reason,
                                    uint32_t modifiers) {
     if (!kb || !kb->frontend) return;
     TypioWlFrontend *fe = kb->frontend;
-    TypioWlActualState actual = typio_wl_session_observe(fe);
+    TypioWlActualState actual = typio_wl_focus_observe(fe);
     typio_log_error(
         "Guard stuck: reason=%s phase=%s key=%u keysym=0x%x mods=0x%x streak=%" PRIu64
         "; releasing grab and stopping",
@@ -102,7 +102,7 @@ static void guard_note_reject(TypioWlKeyboard *kb, uint32_t key,
     typio_logf(state == WL_KEYBOARD_KEY_STATE_PRESSED ? TYPIO_LOG_WARNING : TYPIO_LOG_DEBUG,
         "Key rejected: reason=%s phase=%s key=%u keysym=0x%x mods=0x%x",
         reason, typio_wl_grab_resource_state_name(
-            typio_wl_session_observe(fe).grab),
+            typio_wl_focus_observe(fe).grab),
         key, keysym, modifiers);
 
     if (state != WL_KEYBOARD_KEY_STATE_PRESSED) return;
@@ -117,8 +117,8 @@ static void guard_note_reject(TypioWlKeyboard *kb, uint32_t key,
     }
 
     if (fe->guard_reject_press_streak >= GUARD_FAILSAFE_THRESHOLD) {
-        TypioWlActualState actual = typio_wl_session_observe(fe);
-        if (!typio_wl_session_is_transitioning(&actual)) {
+        TypioWlActualState actual = typio_wl_focus_observe(fe);
+        if (!typio_wl_focus_is_transitioning(&actual)) {
             guard_trigger_failsafe(kb, reason, key, keysym, modifiers);
         }
     }
@@ -356,7 +356,7 @@ static void on_key(void *data,
             "Emergency exit: key=%u keysym=0x%x mods=0x%x phase=%s",
             key, keysym, modifiers,
             typio_wl_grab_resource_state_name(
-                typio_wl_session_observe(frontend).grab));
+                typio_wl_focus_observe(frontend).grab));
         typio_wl_keyboard_release_grab(keyboard);
         typio_wl_frontend_stop(frontend);
         return;
@@ -364,13 +364,34 @@ static void on_key(void *data,
 
     /* Routing guard */
     if (guard_reason(frontend)) {
+        /* Soft pause: the grab is retained and the keymap is synced, but no
+         * editable is focused (the user clicked away / deactivated). The
+         * compositor still routes keys to our grab, so dropping them would
+         * swallow the user's typing and shortcuts. Pass them straight through
+         * to the application via the virtual keyboard — the same forwarding we
+         * use for unhandled keys while focused. Only states that genuinely
+         * cannot forward (grab absent, keymap not yet synced, broken, or a
+         * mid-activation transition) fall through to reject. */
+        TypioWlActualState actual = typio_wl_focus_observe(frontend);
+        bool focused = frontend->session && frontend->session->ctx &&
+                       typio_input_context_is_focused(frontend->session->ctx);
+        if (actual.grab == TYPIO_WL_GRAB_RES_READY && !focused) {
+            guard_reset(frontend);
+            typio_wl_vk_forward_key(keyboard, time, key, state, unicode);
+            trace_key(keyboard,
+                      state == WL_KEYBOARD_KEY_STATE_PRESSED ? "paused-passthrough-press"
+                                                             : "paused-passthrough-release",
+                      key, keysym, modifiers, unicode,
+                      key_get_state(frontend, key), "soft_pause_forward");
+            return;
+        }
         guard_note_reject(keyboard, key, keysym, modifiers, state);
         trace_key(keyboard,
                   state == WL_KEYBOARD_KEY_STATE_PRESSED ? "guard-reject-press" : "guard-reject-release",
                   key, keysym, modifiers, unicode,
                   key_get_state(frontend, key),
                   typio_wl_grab_resource_state_name(
-                      typio_wl_session_observe(frontend).grab));
+                      typio_wl_focus_observe(frontend).grab));
         if (state == WL_KEYBOARD_KEY_STATE_RELEASED &&
             keyboard->repeating && keyboard->repeat_key == key)
             typio_wl_keyboard_repeat_stop(keyboard);

@@ -56,8 +56,8 @@ in depth.
 | **Engine Manifest** | A `typio-engine-*.toml` file that declares engine metadata, capabilities, and worker argv. | [Engine Discovery](engine-discovery.md) |
 | **Engine Availability** | The active engine lifecycle state that answers whether the engine can process input right now. Non-ready keyboard engines consume key cycles locally instead of leaking raw keys to the application. | [Input-Method Session](../explanation/input-method-session.md) |
 | **TIP v1** | Typio IPC Protocol version 1. Unix Domain Socket + length-prefixed JSON-RPC 2.0. | [IPC Protocol](ipc-protocol.md) |
-| **Session Controller** | Derived-state, idempotent-diff pipeline that manages grab create/destroy, focus_in/focus_out, and keymap epoch scrubbing. Replaces the stored-phase FSM and reconciler. | [Session Controller](../explanation/session-controller.md) |
-| **Soft Pause** | Normal deactivate state where the grab object is retained (keys released, tracking reset) so the next activation can reuse it without rebuilding. | [Session Controller](../explanation/session-controller.md) |
+| **Focus Controller** | Derived-state, idempotent-diff pipeline that manages grab create/destroy, focus_in/focus_out, and keymap epoch scrubbing. Replaces the stored-phase FSM and reconciler. | [Focus Controller](../explanation/focus-controller.md) |
+| **Soft Pause** | Normal deactivate state where the grab object is retained (keys released, tracking reset) so the next activation can reuse it without rebuilding. | [Focus Controller](../explanation/focus-controller.md) |
 | **Input-Method Session** | A single `activate` → `deactivate` cycle on `zwp_input_method_v2`, distinct from the persistent `TypioWlSession` struct and the grab resource cycle. | [Input-Method Session](../explanation/input-method-session.md) |
 
 ## Vocabulary to avoid

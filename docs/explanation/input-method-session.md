@@ -2,25 +2,37 @@
 
 ## Purpose
 
-The word **session** appears at three different layers in typio-linux. This
-document disambiguates them and defines the lifecycle of each. It exists so
-readers can answer "which session?" precisely when debugging focus, grab, or
-preedit bugs.
+This document describes the lifecycle of a Wayland input-method engagement in
+typio-linux — from the moment the compositor gives the daemon focus, through
+keyboard-grab setup and key routing, to teardown and recovery.
 
-For the protocol specification see the upstream
-[wayland-protocols `input-method-unstable-v2.xml`](https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/unstable/input-method/input-method-unstable-v2.xml).
-For the control model that manages grab resources see
-[Session Controller](session-controller.md).
-For event-loop scheduling, GPU bounds, and auxiliary-source timing see
-[Event Loop Scheduling](event-loop-scheduling.md).
+One naming hazard runs through all of it: three things span that engagement
+with **different lifetimes**, and two of them are called "session." Telling
+them apart is what separates a precise focus/grab/preedit bug report from a
+vague one, so the next section pins them down before the lifecycle detail.
 
-## Three Layers of "Session"
+See also: the upstream protocol spec
+([`input-method-unstable-v2.xml`](https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/unstable/input-method/input-method-unstable-v2.xml));
+the control model that manages the grab resource
+([Focus Controller](focus-controller.md)); event-loop scheduling
+([Event Loop Scheduling](event-loop-scheduling.md)).
 
-| Layer | What it is | Lifetime |
-|-------|-----------|----------|
-| **Protocol Session** | A single `activate` → `deactivate` cycle on `zwp_input_method_v2` | From compositor `activate` to compositor `deactivate` |
-| **Session Object** | The `TypioWlSession` C struct and its `TypioInputContext` | From first `activate` to `frontend` teardown |
-| **Grab Resource Cycle** | The keyboard grab + vk-keymap resource managed by the session controller | From `desired.grab = YES` to `desired.grab = NONE` |
+## Three Lifetimes to Keep Separate
+
+Three things span an input-method engagement, each with a **different**
+lifetime. Two carry the word "session"; the third is the focus controller's
+resource (it was the "session controller" until that name was dropped to stop
+exactly this collision). Confusing the three is the most common source of vague
+focus/grab bug reports.
+
+| Concept | What it is | Lifetime | Owner |
+|---------|-----------|----------|-------|
+| **Protocol session** | One `activate` → `deactivate` cycle on `zwp_input_method_v2` | compositor `activate` → `deactivate` | compositor |
+| **Session object** (`TypioWlSession`) | The C struct wrapping `TypioInputContext` + editing-context facts | first `activate` → frontend teardown | daemon |
+| **Grab / focus lifecycle** | The keyboard-grab + vk-keymap resource | `desired.grab = YES` → `NONE` | [focus controller](focus-controller.md) |
+
+The first two are detailed below; the third is the [focus controller](focus-controller.md)'s
+domain and is only summarized here.
 
 ### Protocol Session
 
@@ -70,22 +82,18 @@ engine.
 2. `surrounding_text` and `content_type` are cached across activations so
 the engine sees context immediately on re-focus.
 
-### Grab Resource Cycle
+### Grab / Focus Lifecycle
 
-This is what the [Session Controller](session-controller.md) manages. It is
-**not** a protocol object and it is **not** a C struct instance. It is the
-availability of the unified grab + vk-keymap resource:
+This is the availability of the unified keyboard-grab + vk-keymap resource —
+**not** a protocol object and **not** a C struct instance. It can outlive a
+protocol session (soft pause) and be rebuilt across protocol sessions (resume,
+reconnect).
 
-```text
-ABSENT ──create──▶ NEEDS_KEYMAP ──keymap──▶ READY ──destroy──▶ ABSENT
-                      │                        │
-                      └────── timeout ────────▶ BROKEN ───────┘
-```
-
-The grab resource cycle can outlive a protocol session (soft pause) and can
-be rebuilt across protocol sessions (resume, reconnect). The session
-controller's `reduce`/`diff`/`apply` pipeline converges this resource onto
-the desired state derived from input facts.
+It is owned by the **focus controller**, whose `reduce`/`diff`/`apply` pipeline
+converges it onto the desired state derived from input facts. Its readiness
+states (`ABSENT → NEEDS_KEYMAP → READY → BROKEN`), the state diagram, and the
+rules that govern them are the mechanism's single source of truth — see
+[Focus Controller § Actual State](focus-controller.md#actual-state).
 
 ## Build-up Chain
 
@@ -128,7 +136,7 @@ Additionally:
 - a previously healthy virtual keyboard is not proof that the current grab
   has a current keymap
 
-`typio_wl_lifecycle_observe()` is a **view of reality, never a stored second
+`typio_wl_focus_observe()` is a **view of reality, never a stored second
 source of truth**, so the observed snapshot cannot drift from the resources
 it describes.
 
@@ -136,8 +144,8 @@ it describes.
 
 | Module | Responsibility |
 |--------|---------------|
-| `session_controller.{c,h}` | pure lifecycle decisions (`reduce`, `diff`) and the data structures that describe them |
-| `session_effects.c` | `observe` (live resource snapshot) and `apply` (effectful execution of the diff) |
+| `focus_controller.{c,h}` | pure lifecycle decisions (`reduce`, `diff`) and the data structures that describe them |
+| `focus_effects.c` | `observe` (live resource snapshot) and `apply` (effectful execution of the diff) |
 | `tracker.{c,h}` | the per-key generation stamp and symmetric press/release tracking — mutable, and **never** the routing decision |
 | `router.{c,h}` | the pure routing decision `(key, mods, state) → {action, reason}` |
 | `keyboard.c` | key-event interpretation (XKB → `TypioKeyEvent`) while the session is focused |
@@ -154,24 +162,18 @@ tracker.
 
 ## Relationship Diagram
 
-```text
-Compositor timeline:
-  activate ──done──▶ [typing] ──deactivate ──▶ [pause] ──activate ──▶ [typing]
-  │                    │           │               │         │
-  └─Protocol Session 1─┘           │               │         └─Protocol Session 2
-                                   │               │
-  TypioWlSession lifetime:         │               │
-  ├────────────────────────────────┼───────────────┼────────────────┤
-  │                                │               │                │
-  create                          reset          pause           reset
-  │                                │               │                │
-  └────────────────────────────────┴───────────────┴────────────────┘
-                                   │               │
-  Grab resource cycle:             │               │
-  ├────────────────────────────────┼───────────────┼────────────────┤
-  │create grab    keymap ready     │soft pause     │reuse grab      │
-  │NEEDS_KEYMAP ──▶ READY ────────▶ READY ───────▶ READY          │
-  └────────────────────────────────┴───────────────┴────────────────┘
+```mermaid
+timeline
+    title Three "session" layers across two protocol sessions
+    section Protocol Session 1
+        activate + done : Session object CREATED : Grab CREATED, NEEDS_KEYMAP
+        typing          : Session object alive    : Grab READY, keys reach engine
+        deactivate      : Session object RESET, ctx kept : Grab soft-paused, stays READY
+    section Pause (no protocol session)
+        idle            : Session object still alive : Grab retained, READY
+    section Protocol Session 2
+        activate        : Session object RESET, ctx kept : Grab REUSED, still READY
+        typing          : Session object alive    : Grab READY, keys reach engine
 ```
 
 Key observations from the diagram:
@@ -179,32 +181,20 @@ Key observations from the diagram:
 - `TypioWlSession` lives across both protocol sessions.
 - The grab is created once, stays `READY` through the soft pause, and is
 reused on the second activation.
-- The session controller's `desired.grab` transitions `YES → SOFT_PAUSE → YES`.
+- The focus controller's `desired.grab` transitions `YES → SOFT_PAUSE → YES`.
 No `destroy_grab` effect fires during the soft pause.
 
 ## Grab Readiness
 
 The keyboard grab and its virtual-keyboard keymap handshake are **one
-resource** with a single readiness state. There is no separate phase plus vk
-state machine plus "non-routable grab" rescue branch:
+resource** with a single readiness state (`absent → needs_keymap → ready →
+broken`) — no separate phase plus vk state machine plus "non-routable grab"
+rescue branch. Keys route to the engine only when the resource is `ready`.
 
-| State | Meaning |
-|-------|---------|
-| `absent` | no grab object exists |
-| `needs_keymap` | a grab exists, but the current grab epoch has not completed the keymap handoff |
-| `ready` | the current epoch delivered a compositor keymap to the virtual keyboard; key/repeat processing and unhandled-key forwarding may proceed |
-| `broken` | the path is unhealthy and must not be trusted; a fail-safe condition |
-
-Rules:
-
-- creating/rebuilding the grab starts a new epoch and forces `needs_keymap`
-- old `ready` must never survive into a new grab epoch
-- `ready` requires a compositor keymap observed in the current epoch
-- a timeout in `needs_keymap`, or any `broken`, is a fail-safe condition —
-  prefer releasing the grab over forwarding through a partially broken path
-- modifier-mask updates may apply while `needs_keymap` (the derived
-  `activating` case) so held Ctrl/Alt/Super survive grab creation before the
-  first new key press; key presses may not
+The readiness states, their state diagram, and the epoch rules that govern
+them (new epoch on rebuild, old `ready` never survives, modifier-vs-key gating
+during `needs_keymap`) are owned by the focus controller — see
+[Focus Controller § Actual State](focus-controller.md#actual-state).
 
 ## Engine Availability
 
@@ -256,25 +246,25 @@ produced no key-up and is dropped unconditionally.
 
 Recovery shares the normal path **only for divergences the observed axes can
 see**. Observation reads resource *presence*, not external liveness, so the
-reconciler is a backstop for internal state drift, not a detector of silent
-compositor-side grab death:
+focus controller's diff is a backstop for internal state drift, not a detector
+of silent compositor-side grab death:
 
-- **Internal divergence** — the grab object is missing while the declared phase
-  still expects a routable session. The reconciler observes the mismatch and
-  runs the repair path.
+- **Internal divergence** — the grab object is missing while `desired.grab` is
+  still `YES`. `observe()` reports `ABSENT`, so the diff recreates the grab on
+  the next tick.
 - **Suspend/resume** — a grab dead across suspend can leave a live proxy, which
   observation cannot distinguish from a healthy one. A resume detector records
-  the gap fact and invalidates the grab generation; the next lifecycle step
-  rebuilds. The input context is never `focus_out`'d, so the engine's in-flight
-  composition survives.
-- **Compositor reconnect** — connection death surfaces as `POLLHUP`; teardown
-  returns the declared phase to inactive, and the fresh `activate` on reconnect
-  drives the rebuild. Engine/session state, aux handlers, the config watch, and
-  the resume detector are preserved.
+  the gap fact and invalidates the grab generation; the next tick rebuilds. The
+  input context is never `focus_out`'d, so the engine's in-flight composition
+  survives.
+- **Compositor reconnect** — connection death surfaces as `POLLHUP`; the lost
+  connection forces `desired.grab = NONE` and a full teardown, and the fresh
+  `activate` on reconnect drives the rebuild. Engine/session state, aux
+  handlers, the config watch, and the resume detector are preserved.
 
 A grab the compositor orphans with *no* protocol event, suspend, or disconnect
-is invisible to observation and is **not** auto-recovered. The reconciler can
-only act on facts it can see.
+is invisible to observation and is **not** auto-recovered. The focus controller
+can only act on facts it can see.
 
 ### Suspend without deactivate
 
@@ -289,9 +279,9 @@ The compositor crashes and restarts. The Wayland socket stays open (no
 `POLLHUP`) but the new compositor does not restore the old grab. The
 protocol session is still "active" from the daemon's point of view, but the
 grab resource is silently dead. This is the **dead-but-present** blind spot:
-the session controller's `observe()` sees a live proxy, so `diff` produces no
+the focus controller's `observe()` sees a live proxy, so `diff` produces no
 effects. Recovery requires an external fact source (resume detector or future
-liveness probe); see [Session Controller](session-controller.md) § Blind
+liveness probe); see [Focus Controller](focus-controller.md) § Blind
 Spot.
 
 ### Engine switch mid-session
@@ -353,8 +343,10 @@ decision:
 
 Session lifecycle regressions should be covered by:
 
-- `lifecycle` tests: valid phase transitions and done-event classification
-- `reconciler` tests: observed-axis divergence detection and repair decisions
+- `focus_controller` tests: `reduce` / `diff` decisions, done-event
+  classification, and guard predicates
+- `state_machine_properties` tests: derived-state convergence and observed-axis
+  divergence handling
 - `key_tracking` tests: generation fencing and symmetric press/release across
   teardown
 - routing tests: pure `(key, mods, state)` decisions including reserved
@@ -364,12 +356,13 @@ Session lifecycle regressions should be covered by:
 - repeat tests: states that must not repeat, including `ENGINE_NOT_READY`
 
 Every guard deleted from the old model (startup suppression, boundary carry,
-divergence repair) must first be re-expressed as a failing lifecycle,
-reconciler, or helper-policy test before its imperative code is removed.
+divergence repair) must first be re-expressed as a failing focus-controller,
+state-machine-properties, or helper-policy test before its imperative code is
+removed.
 
 ## See Also
 
-- [Session Controller](session-controller.md) — the control model that
+- [Focus Controller](focus-controller.md) — the control model that
   manages grab resources
 - [Event Loop Scheduling](event-loop-scheduling.md) — GPU bounds,
   D-Bus dispatch, config reload, and poll deadlines

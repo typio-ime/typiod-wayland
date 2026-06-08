@@ -1,8 +1,21 @@
 # ADR-0003: Session Controller — Derived State, Idempotent Diff
 
-- **Status**: Accepted
+- **Status**: Accepted (amended 2026-06-08 — component renamed; see note below)
 - **Date**: 2026-05-28
 - **Deciders**: Project maintainers
+
+> **Amendment (2026-06-08).** The component this ADR calls the *session
+> controller* was renamed the **focus controller**, to disambiguate it from the
+> `TypioWlSession` object and the compositor *protocol session* (the word
+> "session" carried three meanings). The decision below is **unchanged** — only
+> the names are. Current locations and symbols:
+>
+> - `src/engine/focus_controller.{c,h}` — `reduce` + `diff` (pure)
+> - `src/wayland/focus_effects.c` — `observe` + `apply` (effectful)
+> - public functions `typio_wl_focus_{reduce,diff,observe,apply,classify_done}`
+>
+> The original title and body are preserved as the historical record. See
+> [Focus Controller](../explanation/focus-controller.md) for current naming.
 
 ## Context
 

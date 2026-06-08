@@ -117,10 +117,10 @@ static void frontend_on_resume(void *user_data, const char *reason,
     (void)sleep_ms;
     if (!frontend)
         return;
-    /* The per-tick driver in event_loop.c clears session_facts at the start
+    /* The per-tick driver in event_loop.c clears focus_facts at the start
      * of every iteration; a fact recorded here is consumed by the same tick
      * once the resume-signal fd has been polled and reduce() runs. */
-    frontend->session_facts.suspend_gap_detected = true;
+    frontend->focus_facts.suspend_gap_detected = true;
 }
 
 static void frontend_init_resume_signal(TypioWlFrontend *frontend) {

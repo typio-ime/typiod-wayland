@@ -1,6 +1,6 @@
 /**
- * @file session_controller.h
- * @brief Desired-vs-actual session lifecycle controller.
+ * @file focus_controller.h
+ * @brief Desired-vs-actual focus lifecycle controller.
  *
  * There is no stored lifecycle phase. The only persisted things are raw input
  * facts and live resource handles. Every event-loop tick runs one step:
@@ -13,15 +13,15 @@
  *
  * This module owns the pure half: facts, desired, actual, effects, reduce,
  * and diff. The effectful half (observe + apply) lives in
- * src/wayland/session_effects.c because it must read and mutate the
+ * src/wayland/focus_effects.c because it must read and mutate the
  * TypioWlFrontend struct.
  *
- * @see docs/explanation/session-controller.md
+ * @see docs/explanation/focus-controller.md
  * @see ADR-0003: Session Controller — Derived State, Idempotent Diff
  */
 
-#ifndef TYPIO_WL_SESSION_CONTROLLER_H
-#define TYPIO_WL_SESSION_CONTROLLER_H
+#ifndef TYPIO_WL_FOCUS_CONTROLLER_H
+#define TYPIO_WL_FOCUS_CONTROLLER_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -42,6 +42,12 @@ typedef struct TypioWlInputFacts {
     /** The current done() batch included an activate (distinguishes
      *  reactivation from a plain text-state update). */
     bool im_done_had_activate;
+    /** The current done() batch included a deactivate. Mirrors
+     *  im_done_had_activate: a deactivate is committed by the same done()
+     *  that clears the per-event im_deactivate_seen, so without this
+     *  batch-surviving flag a plain focus-out (click away to a non-editable)
+     *  is lost before reduce() runs and the grab never soft-pauses. */
+    bool im_done_had_deactivate;
     /** Serial from the most recent done() event. */
     uint32_t im_done_serial;
     /** Wayland connection is alive (no POLLHUP observed). */
@@ -123,6 +129,7 @@ typedef struct TypioWlEffectSet {
     bool scrub_generation;
     bool send_focus_in;
     bool send_focus_out;
+    bool discard_composition;
     bool clear_preedit;
     bool commit;
     bool reactivate;
@@ -140,9 +147,14 @@ typedef struct TypioWlEffectSet {
  *
  * Rules (first match wins):
  *   - !connection_alive || suspend_gap_detected            → NONE
- *   - im_deactivate_seen                                    → SOFT_PAUSE
- *   - im_activate_seen || im_done_had_activate              → YES
- *   - otherwise                                             → preserve prev.grab
+ *   - im_activate_seen || im_done_had_activate             → YES
+ *   - im_deactivate_seen || im_done_had_deactivate         → SOFT_PAUSE
+ *   - otherwise                                            → preserve prev.grab
+ *
+ * Activate is checked before deactivate so a focus move that batches both
+ * (deactivate-old + activate-new + done) stays YES / reactivates rather than
+ * soft-pausing. A batch with deactivate only (focus-out to a non-editable)
+ * soft-pauses.
  *
  * Edge detection:
  *   - focus_in    = (grab == YES && prev.grab != YES)
@@ -150,7 +162,7 @@ typedef struct TypioWlEffectSet {
  *   - reactivate  = (grab == YES && prev.grab == YES && facts.im_done_had_activate)
  */
 TypioWlDesiredState
-typio_wl_session_reduce(const TypioWlInputFacts *facts,
+typio_wl_focus_reduce(const TypioWlInputFacts *facts,
                         const TypioWlDesiredState *prev);
 
 /**
@@ -162,17 +174,25 @@ typio_wl_session_reduce(const TypioWlInputFacts *facts,
  *
  * Rules (all evaluated independently; multiple can fire on one tick):
  *   - grab == NONE, actual != ABSENT   → destroy_grab + scrub_generation +
- *                                        clear_preedit + commit
+ *                                        discard_composition + clear_preedit +
+ *                                        commit
  *   - grab == YES | SOFT_PAUSE, actual == ABSENT
  *                                      → create_grab + scrub_generation
  *   - grab == YES, actual == BROKEN    → destroy_grab + create_grab +
  *                                        scrub_generation
  *   - focus_in  edge                   → send_focus_in
- *   - focus_out edge                   → send_focus_out
+ *   - focus_out edge                   → send_focus_out + discard_composition +
+ *                                        clear_preedit + commit
  *   - reactivate                       → reactivate (panel re-anchor)
+ *
+ * discard_composition abandons the engine's in-flight composition and
+ * candidate UI when a field loses focus, so a half-typed attempt cannot
+ * leak into the next field (or auto-commit into the one being left). Both
+ * defocus paths — soft-pause (deactivate) and hard-teardown (suspend /
+ * disconnect) — produce the focus_out edge that drives it.
  */
 TypioWlEffectSet
-typio_wl_session_diff(const TypioWlDesiredState *desired,
+typio_wl_focus_diff(const TypioWlDesiredState *desired,
                       const TypioWlActualState *actual);
 
 /* ── Done-event classifier (kept as a pure helper) ────────────────────── */
@@ -194,7 +214,7 @@ typedef enum {
  *  controller itself derives desired state from raw facts without going
  *  through this enum, so the four cases remain observable. */
 TypioWlDoneAction
-typio_wl_session_classify_done(bool was_active,
+typio_wl_focus_classify_done(bool was_active,
                                bool now_active,
                                bool activate_seen);
 
@@ -209,7 +229,7 @@ typio_wl_session_classify_done(bool was_active,
  *  Hot-path callers (key dispatch) may call this after a fresh observe()
  *  snapshot; the predicate is branch-only and has no I/O. */
 bool
-typio_wl_session_can_route_keys(const TypioWlActualState *actual);
+typio_wl_focus_can_route_keys(const TypioWlActualState *actual);
 
 /** @brief Can the host safely process modifier updates right now?
  *
@@ -218,7 +238,7 @@ typio_wl_session_can_route_keys(const TypioWlActualState *actual);
  *  keymap-loading window (NEEDS_KEYMAP); only a missing or broken
  *  resource forbids them. Replaces `phase_allows_modifier_events`. */
 bool
-typio_wl_session_can_route_modifiers(const TypioWlActualState *actual);
+typio_wl_focus_can_route_modifiers(const TypioWlActualState *actual);
 
 /** @brief Is the actual state mid-transition (between focus edges)?
  *
@@ -228,7 +248,7 @@ typio_wl_session_can_route_modifiers(const TypioWlActualState *actual);
  *  tearing down the daemon while a normal activation handshake is
  *  still in flight. Replaces the `phase != ACTIVATING` guard. */
 bool
-typio_wl_session_is_transitioning(const TypioWlActualState *actual);
+typio_wl_focus_is_transitioning(const TypioWlActualState *actual);
 
 /* ── Naming helpers (pure, for tracing) ────────────────────────────────── */
 
@@ -241,7 +261,7 @@ typio_wl_grab_resource_state_name(TypioWlGrabResourceState state);
 const char *
 typio_wl_done_action_name(TypioWlDoneAction action);
 
-/* ── Effectful half (implemented in src/wayland/session_effects.c) ───── */
+/* ── Effectful half (implemented in src/wayland/focus_effects.c) ───── */
 
 struct TypioWlFrontend;
 
@@ -251,7 +271,7 @@ struct TypioWlFrontend;
  * Read-only snapshot. Not a second source of truth.
  */
 TypioWlActualState
-typio_wl_session_observe(const struct TypioWlFrontend *frontend);
+typio_wl_focus_observe(const struct TypioWlFrontend *frontend);
 
 /**
  * @brief Apply an effect set to the frontend.
@@ -263,14 +283,14 @@ typio_wl_session_observe(const struct TypioWlFrontend *frontend);
  * boundary invariants: focus leaves before teardown, preedit is cleared
  * before the grab is recreated, and focus enters after the new grab is
  * ready. The ordering is enforced by the `TYPIO_WL_SESSION_EFFECT_ORDER`
- * static check in session_effects.c.
+ * static check in focus_effects.c.
  */
 void
-typio_wl_session_apply(struct TypioWlFrontend *frontend,
+typio_wl_focus_apply(struct TypioWlFrontend *frontend,
                        const TypioWlEffectSet *effects);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* TYPIO_WL_SESSION_CONTROLLER_H */
+#endif /* TYPIO_WL_FOCUS_CONTROLLER_H */

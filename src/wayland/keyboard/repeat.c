@@ -126,8 +126,8 @@ void typio_wl_keyboard_dispatch_repeat(TypioWlKeyboard *keyboard) {
     if (!keyboard || !keyboard->repeating || keyboard->repeat_timer_fd < 0)
         return;
 
-    TypioWlActualState actual = typio_wl_session_observe(keyboard->frontend);
-    if (!typio_wl_session_can_route_keys(&actual)) {
+    TypioWlActualState actual = typio_wl_focus_observe(keyboard->frontend);
+    if (!typio_wl_focus_can_route_keys(&actual)) {
         typio_wl_keyboard_repeat_stop(keyboard);
         return;
     }

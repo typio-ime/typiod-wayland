@@ -4,10 +4,10 @@
  *
  * The per-tick pipeline:
  *
- *   1. Clear session_facts.
+ *   1. Clear focus_facts.
  *   2. Tick the resume-gap detector (records a fact if a gap fired).
  *   3. Poll + dispatch Wayland + aux handlers.
- *   4. Run the session controller: reduce → observe → diff → apply.
+ *   4. Run the focus controller: reduce → observe → diff → apply.
  *   5. Flush the Panel if the scheduler says so.
  *
  * @see docs/explanation/event-loop-scheduling.md
@@ -20,7 +20,7 @@
 #include "frontend_aux.h"
 #include "clock.h"
 #include "panel.h"
-#include "session_controller.h"
+#include "focus_controller.h"
 #include "state.h"
 #include "trace.h"
 #include "typio/abi/input_context.h"
@@ -64,7 +64,7 @@ frontend_has_keyboard_engine(TypioWlFrontend *frontend) {
 }
 
 static void
-log_session_effects_if_present(TypioWlFrontend *frontend,
+log_focus_effects_if_present(TypioWlFrontend *frontend,
                                const TypioWlDesiredState *desired,
                                const TypioWlActualState *actual,
                                const TypioWlEffectSet *effects) {
@@ -72,16 +72,16 @@ log_session_effects_if_present(TypioWlFrontend *frontend,
         return;
     if (!effects->destroy_grab && !effects->create_grab &&
         !effects->send_focus_in && !effects->send_focus_out &&
-        !effects->clear_preedit && !effects->scrub_generation &&
-        !effects->reactivate) {
+        !effects->discard_composition && !effects->clear_preedit &&
+        !effects->scrub_generation && !effects->reactivate) {
         return;
     }
     typio_wl_trace(frontend,
                    "session",
                    "desired=%s actual=%s "
                    "effects={destroy=%s create=%s scrub=%s "
-                   "focus_in=%s focus_out=%s clear_preedit=%s "
-                   "commit=%s reactivate=%s}",
+                   "focus_in=%s focus_out=%s discard_composition=%s "
+                   "clear_preedit=%s commit=%s reactivate=%s}",
                    typio_wl_grab_want_name(desired->grab),
                    typio_wl_grab_resource_state_name(actual->grab),
                    effects->destroy_grab ? "yes" : "no",
@@ -89,12 +89,13 @@ log_session_effects_if_present(TypioWlFrontend *frontend,
                    effects->scrub_generation ? "yes" : "no",
                    effects->send_focus_in ? "yes" : "no",
                    effects->send_focus_out ? "yes" : "no",
+                   effects->discard_composition ? "yes" : "no",
                    effects->clear_preedit ? "yes" : "no",
                    effects->commit ? "yes" : "no",
                    effects->reactivate ? "yes" : "no");
 }
 
-/* @brief Run one tick of the session controller:
+/* @brief Run one tick of the focus controller:
  *   reduce(facts, prev) → desired
  *   observe(resources)  → actual
  *   diff(desired, actual) → effects
@@ -102,7 +103,7 @@ log_session_effects_if_present(TypioWlFrontend *frontend,
  * then update prev. This is the single point that converges the frontend's
  * resource state onto the desired state derived from the recorded facts. */
 static void
-run_session_controller_pipeline(TypioWlFrontend *frontend) {
+run_focus_controller_pipeline(TypioWlFrontend *frontend) {
     TypioWlInputFacts facts;
     TypioWlDesiredState desired;
     TypioWlActualState actual;
@@ -111,17 +112,17 @@ run_session_controller_pipeline(TypioWlFrontend *frontend) {
     if (!frontend)
         return;
 
-    facts = frontend->session_facts;
+    facts = frontend->focus_facts;
     facts.engine_present = frontend_has_keyboard_engine(frontend);
 
-    desired = typio_wl_session_reduce(&facts, &frontend->session_prev_desired);
-    actual = typio_wl_session_observe(frontend);
-    effects = typio_wl_session_diff(&desired, &actual);
+    desired = typio_wl_focus_reduce(&facts, &frontend->focus_prev_desired);
+    actual = typio_wl_focus_observe(frontend);
+    effects = typio_wl_focus_diff(&desired, &actual);
 
-    log_session_effects_if_present(frontend, &desired, &actual, &effects);
+    log_focus_effects_if_present(frontend, &desired, &actual, &effects);
 
-    typio_wl_session_apply(frontend, &effects);
-    frontend->session_prev_desired = desired;
+    typio_wl_focus_apply(frontend, &effects);
+    frontend->focus_prev_desired = desired;
 }
 
 /* ── Panel flush ──────────────────────────────────────────────────────── */
@@ -431,7 +432,7 @@ int typio_wl_frontend_run(TypioWlFrontend *frontend) {
     /* Initialize the previous desired state. reduce() uses this for edge
      * detection on focus_in / focus_out / reactivate; starting from
      * GRAB_WANT_NONE means the first activate correctly fires focus_in. */
-    frontend->session_prev_desired = (TypioWlDesiredState){
+    frontend->focus_prev_desired = (TypioWlDesiredState){
         .grab = TYPIO_WL_GRAB_WANT_NONE,
         .focus_in = false,
         .focus_out = false,
@@ -452,20 +453,20 @@ int typio_wl_frontend_run(TypioWlFrontend *frontend) {
         /* Clear session-controller facts for this tick. Input-method event
          * handlers and the resume-signal callback will record new facts
          * during this iteration. */
-        frontend->session_facts = (TypioWlInputFacts){
+        frontend->focus_facts = (TypioWlInputFacts){
             .connection_alive = frontend->display != NULL,
         };
 
         /* Detect a suspend/resume gap before doing any work this turn.
          * Cheap (two clock reads); on a gap the detector sets
-         * session_facts.suspend_gap_detected. */
+         * focus_facts.suspend_gap_detected. */
         typio_wl_resume_signal_tick(frontend->resume_signal);
 
         /* Input-first scheduling: prepare/flush Wayland, poll, then dispatch
-         * incoming events BEFORE the session controller runs. This ensures
+         * incoming events BEFORE the focus controller runs. This ensures
          * input facts are fresh before any non-input work can delay the
          * diff. Panel flush runs at the end of the iteration, after the
-         * session controller has applied its effects. */
+         * focus controller has applied its effects. */
         if (event_loop_prepare_and_flush(frontend) < 0) {
             if (event_loop_recover(frontend, &aux))
                 continue;
@@ -502,13 +503,13 @@ int typio_wl_frontend_run(TypioWlFrontend *frontend) {
         }
 
         /* Dispatch optional subsystems through the generic aux-handler path.
-         * The resume-signal handler may set session_facts.suspend_gap_detected
-         * here, which the session controller will pick up on this tick. */
+         * The resume-signal handler may set focus_facts.suspend_gap_detected
+         * here, which the focus controller will pick up on this tick. */
         event_loop_handle_aux_handlers(frontend, fds, aux_indices);
 
         /* Session controller: the single point that converges the frontend's
          * resource state onto the desired state derived from this tick's facts. */
-        run_session_controller_pipeline(frontend);
+        run_focus_controller_pipeline(frontend);
 
         if (idx_repeat >= 0 && (fds[idx_repeat].revents & POLLIN)) {
             typio_wl_frontend_watchdog_set_stage(frontend, TYPIO_WL_LOOP_STAGE_REPEAT);

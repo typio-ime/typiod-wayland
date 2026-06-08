@@ -84,7 +84,7 @@ const char *typio_wl_grab_resource_state_name(TypioWlGrabResourceState state) {
     return "absent";
 }
 
-TypioWlActualState typio_wl_session_observe(const TypioWlFrontend *frontend) {
+TypioWlActualState typio_wl_focus_observe(const TypioWlFrontend *frontend) {
     TypioWlActualState state = { .grab = TYPIO_WL_GRAB_RES_ABSENT };
     (void)frontend;
     return state;

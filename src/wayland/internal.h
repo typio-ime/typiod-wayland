@@ -11,7 +11,7 @@
 #include "wayland/keyboard/policy/tracker.h"
 #include "typio/abi/shortcut.h"
 #include "shortcut.h"
-#include "engine/session_controller.h"
+#include "engine/focus_controller.h"
 #include "wayland/keyboard/repeat.h"
 #include "wayland/foreign/identity.h"
 #include "panel.h"
@@ -285,10 +285,10 @@ struct TypioWlFrontend {
     /* Session controller: raw input facts recorded this tick.
      * Written by input_method event handlers, consumed by the per-tick driver
      * in event_loop.c, then cleared. */
-    TypioWlInputFacts session_facts;
+    TypioWlInputFacts focus_facts;
     /* Previous tick's desired state, used by reduce() for edge detection
      * on focus_in / focus_out / reactivate. */
-    TypioWlDesiredState session_prev_desired;
+    TypioWlDesiredState focus_prev_desired;
 
     TypioWlPanelCoordinator *panel_coord;
     TypioWlConfigWatcher *config;

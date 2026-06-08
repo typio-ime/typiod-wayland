@@ -38,7 +38,7 @@ Use `dbus-run-session` for sanitizer and CI-like runs so status-bus and tray tes
 export LD_LIBRARY_PATH=/absolute/path/to/libtypio/target/release:${LD_LIBRARY_PATH}
 ./build/tests/test_key_arbiter
 ./build/tests/test_key_route
-./build/tests/test_session_controller
+./build/tests/test_focus_controller
 ./build/tests/test_state_machine_properties
 ./build/tests/test_boundary_bridge
 ./build/tests/test_status_bus
@@ -68,7 +68,7 @@ Add or update tests when changing:
 - voice service state transitions, reload deferral, or completion dispatch
 - status/tray D-Bus dispatch loops
 - candidate Panel layout, rendering, or state classification
-- session-controller `reduce` / `diff` / guard predicates (`test_session_controller`, `test_state_machine_properties`)
+- focus-controller `reduce` / `diff` / guard predicates (`test_focus_controller`, `test_state_machine_properties`)
 
 Prefer small state-policy tests for Wayland behavior. Do not rely only on manual compositor testing when a bug can be reduced to a helper or state model.
 

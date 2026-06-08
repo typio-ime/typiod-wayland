@@ -10,7 +10,7 @@
  * threshold boundaries) that hand-written cases tend to miss.
  */
 
-#include "session_controller.h"
+#include "focus_controller.h"
 #include "backoff.h"
 #include "resume_model.h"
 
@@ -54,7 +54,7 @@ static uint32_t rng_below(uint32_t bound) {
 
 #define ITERATIONS 20000
 
-/* ---- session_controller pure predicates ------------------------------ */
+/* ---- focus_controller pure predicates ------------------------------ */
 /*
  * Property: every pure predicate is a total function of the actual state
  * and an independent re-derivation must agree, across the full Cartesian
@@ -70,7 +70,7 @@ TEST(can_route_keys_exhaustive) {
                 .ic_focused = (bool)focused,
                 .grab = (TypioWlGrabResourceState)g,
             };
-            bool got = typio_wl_session_can_route_keys(&actual);
+            bool got = typio_wl_focus_can_route_keys(&actual);
             /* Spec: routed iff focused AND grab is READY. */
             bool want = focused && g == TYPIO_WL_GRAB_RES_READY;
             ASSERT(got == want);
@@ -85,7 +85,7 @@ TEST(can_route_modifiers_exhaustive) {
                 .ic_focused = (bool)focused,
                 .grab = (TypioWlGrabResourceState)g,
             };
-            bool got = typio_wl_session_can_route_modifiers(&actual);
+            bool got = typio_wl_focus_can_route_modifiers(&actual);
             /* Spec: routed iff grab is not ABSENT and not BROKEN. */
             bool want = g != TYPIO_WL_GRAB_RES_ABSENT &&
                         g != TYPIO_WL_GRAB_RES_BROKEN;
@@ -101,7 +101,7 @@ TEST(is_transitioning_exhaustive) {
                 .ic_focused = (bool)focused,
                 .grab = (TypioWlGrabResourceState)g,
             };
-            bool got = typio_wl_session_is_transitioning(&actual);
+            bool got = typio_wl_focus_is_transitioning(&actual);
             /* Spec: transitioning iff focused AND grab is ABSENT, NEEDS_KEYMAP,
              * or BROKEN. The "focused but no grab" case is the start of the
              * activation handshake. */
@@ -128,7 +128,7 @@ TEST(classify_done_exhaustive) {
     for (int w = 0; w < 2; ++w) {
         for (int n = 0; n < 2; ++n) {
             for (int a = 0; a < 2; ++a) {
-                TypioWlDoneAction got = typio_wl_session_classify_done(
+                TypioWlDoneAction got = typio_wl_focus_classify_done(
                     (bool)w, (bool)n, (bool)a);
                 ASSERT(got == truth[w][n][a]);
             }
@@ -145,8 +145,8 @@ TEST(predicates_are_mutually_consistent) {
                 .ic_focused = (bool)focused,
                 .grab = (TypioWlGrabResourceState)g,
             };
-            bool routed = typio_wl_session_can_route_keys(&actual);
-            bool transit = typio_wl_session_is_transitioning(&actual);
+            bool routed = typio_wl_focus_can_route_keys(&actual);
+            bool transit = typio_wl_focus_is_transitioning(&actual);
             if (routed)
                 ASSERT(!transit);
             /* The focus-required pair is also consistent: no route when !focused. */

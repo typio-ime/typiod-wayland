@@ -37,14 +37,14 @@ The daemon binds five Wayland protocol layers. The input-method layer is the one
 ## Event Handlers: events become facts
 
 Every `zwp_input_method_v2` event does one thing — **record a fact** into
-`frontend->session_facts`. Focus facts are classified at `done`; resource
-drift is checked by the session controller on the event-loop path. This is
+`frontend->focus_facts`. Focus facts are classified at `done`; resource
+drift is checked by the focus controller on the event-loop path. This is
 what keeps protocol handlers small and the lifecycle boundaries explicit.
 
-Facts are consumed, not stored, per the session controller model: each tick
+Facts are consumed, not stored, per the focus controller model: each tick
 clears the fact buffer, events refill it during dispatch, and `reduce()`
 derives the desired state atomically at the end of the batch. See
-[Session Controller](session-controller.md).
+[Focus Controller](focus-controller.md).
 
 ### `activate` / `deactivate`
 
@@ -70,7 +70,7 @@ The compositor's double-buffer commit point, and where focus facts become lifecy
 
 1. **Serial increment**. `im_serial++`. The serial is the count of `done` events received; it is the commit serial for every `zwp_input_method_v2_commit()` call.
 2. **Apply facts**. The buffered `surrounding_text`, `content_type`, `text_change_cause`, and `active` facts become current atomically.
-3. **Classify the state change.** The focus facts are reduced by the pure `typio_wl_session_classify_done(was_active, now_active, activate_seen)` into one action — `FIRST_ACTIVATE`, `DEACTIVATE`, `REACTIVATE`, or `NOOP` — which the per-tick pipeline (event_loop.c) consumes through the `TypioWlDesiredState.focus_in` / `focus_out` / `reactivate` edges. The classifier lives in `engine/session_controller.c` and is unit-tested (`tests/test_state_machine_properties.c`). Diff converges every tick, so a `NOOP` that still finds a non-routable grab recovers naturally on the next iteration; there is no separate reconciler. See [ADR-0018](../adr/0018-focus-transition-classification.md) and [ADR-0003](../adr/0003-session-controller-reduce-diff.md).
+3. **Classify the state change.** The focus facts are reduced by the pure `typio_wl_focus_classify_done(was_active, now_active, activate_seen)` into one action — `FIRST_ACTIVATE`, `DEACTIVATE`, `REACTIVATE`, or `NOOP` — which the per-tick pipeline (event_loop.c) consumes through the `TypioWlDesiredState.focus_in` / `focus_out` / `reactivate` edges. The classifier lives in `engine/focus_controller.c` and is unit-tested (`tests/test_state_machine_properties.c`). Diff converges every tick, so a `NOOP` that still finds a non-routable grab recovers naturally on the next iteration; there is no separate reconciler. See [ADR-0018](../adr/0018-focus-transition-classification.md) and [ADR-0003](../adr/0003-session-controller-reduce-diff.md).
 
 ### `unavailable`
 
@@ -97,7 +97,7 @@ This chokepoint is the single place where every protocol write is validated. All
 
 ## Keyboard Grab Lifecycle
 
-The grab and its keymap handshake are **one resource** (`absent → needs_keymap → ready → broken`) that lifecycle transitions create and the reconciler repairs; the rules are in [Input-Method Session](input-method-session.md).
+The grab and its keymap handshake are **one resource** (`absent → needs_keymap → ready → broken`) that the focus controller creates and repairs every tick; the rules are in [Input-Method Session](input-method-session.md).
 
 Briefly:
 - Each grab incarnation has a **generation**. A key press claims the current generation, and the matching release is accepted only when the stored per-key generation still matches the active grab generation.
@@ -158,10 +158,10 @@ The `activate_seen` fact makes this case explicit without that cost. At `done`, 
 
 System suspend is invisible to the Wayland protocol: no `deactivate` before sleep, no guaranteed `activate` after wake; a held modifier may be stuck and the grab may be silently dead on wake. The compositor can also drop the grab with no event at all (restart, bug, race).
 
-How much of this the reconciler handles depends on whether `typio_wl_lifecycle_observe()` can *see* it — and observation reads resource *presence*, not *liveness*:
+How much of this the focus controller handles depends on whether `typio_wl_focus_observe()` can *see* it — and observation reads resource *presence*, not *liveness*:
 
-- **Suspend.** A grab dead across suspend leaves a *live proxy*; observation reports it healthy, so the reconciler alone is blind. A resume **detector** (logind `PrepareForSleep` plus a `CLOCK_BOOTTIME` vs `CLOCK_MONOTONIC` gap heuristic) records facts: it invalidates the grab generation and drops the compositor-visible preedit, then lets the lifecycle path rebuild as needed.
-- **Grab object gone.** If the grab *object* is actually absent while the declared phase still expects a routable session, observation sees the mismatch and the reconciler repairs it.
+- **Suspend.** A grab dead across suspend leaves a *live proxy*; observation reports it healthy, so the focus controller alone is blind. A resume **detector** (logind `PrepareForSleep` plus a `CLOCK_BOOTTIME` vs `CLOCK_MONOTONIC` gap heuristic) records facts: it invalidates the grab generation and drops the compositor-visible preedit, then lets the next tick rebuild as needed.
+- **Grab object gone.** If the grab *object* is actually absent while `desired.grab` is still `YES`, observation reports `ABSENT` and the diff recreates it.
 
 In both cases the input context is never `focus_out`'d, so the engine's in-flight composition survives, and the rebuild is the *same* grab build used on first focus.
 
@@ -211,8 +211,8 @@ heavyweight clients like Chrome.
 | Protocol object | Source file | Responsibility |
 |---|---|---|
 | `zwp_input_method_v2` | `src/wayland/input_method.c` | Event handlers (record facts), serial chokepoint |
-| Session controller (pure) | `src/engine/session_controller.{c,h}` | `reduce` / `diff` / `classify_done` / guard predicates — dependency-free, unit-tested |
-| Session effects (effectful) | `src/wayland/session_effects.c` | `observe` and `apply`, including hard teardown, effect-order `_Static_assert` |
+| Focus controller (pure) | `src/engine/focus_controller.{c,h}` | `reduce` / `diff` / `classify_done` / guard predicates — dependency-free, unit-tested |
+| Session effects (effectful) | `src/wayland/focus_effects.c` | `observe` and `apply`, including hard teardown, effect-order `_Static_assert` |
 | `zwp_input_method_keyboard_grab_v2` | `src/wayland/keyboard/keyboard.c` | Grab create/destroy, key/modifiers/repeat listeners, emergency exit |
 | Key generation + tracking | `src/wayland/keyboard/policy/tracker.{c,h}` | Generation fence and symmetric press/release |
 | `zwp_virtual_keyboard_v1` | `src/wayland/keyboard/bridge.c` | Keymap handoff, readiness gating, unhandled-key forwarding, fail-safe downgrade |

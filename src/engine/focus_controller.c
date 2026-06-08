@@ -1,5 +1,5 @@
 /**
- * @file session_controller.c
+ * @file focus_controller.c
  * @brief Pure lifecycle decision functions: reduce, diff, done classifier,
  *        and guard predicates.
  *
@@ -9,7 +9,7 @@
  * project to minimal idempotent effects.
  */
 
-#include "session_controller.h"
+#include "focus_controller.h"
 
 /* ── Name helpers (pure, for tracing) ──────────────────────────────────── */
 
@@ -51,7 +51,7 @@ typio_wl_done_action_name(TypioWlDoneAction action)
 /* ── Reduce: facts → desired ───────────────────────────────────────────── */
 
 TypioWlDesiredState
-typio_wl_session_reduce(const TypioWlInputFacts *facts,
+typio_wl_focus_reduce(const TypioWlInputFacts *facts,
                         const TypioWlDesiredState *prev)
 {
     TypioWlDesiredState d = {
@@ -64,13 +64,21 @@ typio_wl_session_reduce(const TypioWlInputFacts *facts,
     if (!facts || !prev)
         return d;
 
-    /* Grab want: hard boundaries first, then soft, then activation.
-     * Hard boundary (suspend / connection lost) wins over an in-flight
-     * deactivate in the same batch. */
+    /* Grab want: hard boundary first, then activation, then deactivation.
+     *
+     * Hard boundary (suspend / connection lost) wins over everything.
+     *
+     * Activation is checked before deactivation: a focus move that batches
+     * both events (deactivate-old + activate-new committed by one done) must
+     * resolve to YES (a reactivation), not soft-pause.
+     *
+     * Both activate and deactivate are read from their batch-surviving flags
+     * (im_done_had_*) as well as the raw per-event flags. The raw deactivate
+     * flag alone is not enough: a done() commits and clears it in the same
+     * dispatch batch, so a plain focus-out would otherwise be lost before
+     * this runs and the grab would never soft-pause. */
     if (!facts->connection_alive || facts->suspend_gap_detected) {
         d.grab = TYPIO_WL_GRAB_WANT_NONE;
-    } else if (facts->im_deactivate_seen) {
-        d.grab = TYPIO_WL_GRAB_WANT_SOFT_PAUSE;
     } else if (facts->im_activate_seen || facts->im_done_had_activate) {
         /* Skip the grab entirely if no engine is registered: focusing the
          * input context is still meaningful (state in sync), but a grab
@@ -78,6 +86,8 @@ typio_wl_session_reduce(const TypioWlInputFacts *facts,
         d.grab = facts->engine_present
                      ? TYPIO_WL_GRAB_WANT_YES
                      : TYPIO_WL_GRAB_WANT_NONE;
+    } else if (facts->im_deactivate_seen || facts->im_done_had_deactivate) {
+        d.grab = TYPIO_WL_GRAB_WANT_SOFT_PAUSE;
     } else {
         d.grab = prev->grab;
     }
@@ -103,7 +113,7 @@ typio_wl_session_reduce(const TypioWlInputFacts *facts,
 /* ── Diff: desired vs actual → effects ─────────────────────────────────── */
 
 TypioWlEffectSet
-typio_wl_session_diff(const TypioWlDesiredState *desired,
+typio_wl_focus_diff(const TypioWlDesiredState *desired,
                       const TypioWlActualState *actual)
 {
     TypioWlEffectSet e = {0};
@@ -118,6 +128,7 @@ typio_wl_session_diff(const TypioWlDesiredState *desired,
         actual->grab != TYPIO_WL_GRAB_RES_ABSENT) {
         e.destroy_grab = true;
         e.scrub_generation = true;
+        e.discard_composition = true;
         e.clear_preedit = true;
         e.commit = true;
     }
@@ -144,8 +155,18 @@ typio_wl_session_diff(const TypioWlDesiredState *desired,
     /* Focus edges. */
     if (desired->focus_in)
         e.send_focus_in = true;
-    if (desired->focus_out)
+    if (desired->focus_out) {
         e.send_focus_out = true;
+        /* Leaving an active field abandons any in-flight composition.
+         * Discard it engine-side and blank the compositor preedit so a
+         * half-typed attempt cannot leak into the next field on its
+         * focus_in. The soft-pause (deactivate) defocus path reaches the
+         * teardown only through this edge — the grab==NONE branch above
+         * covers the hard-teardown path. */
+        e.discard_composition = true;
+        e.clear_preedit = true;
+        e.commit = true;
+    }
 
     /* Reactivate: re-anchor the panel to the new caret. The grab and the
      * engine state are preserved. */
@@ -158,7 +179,7 @@ typio_wl_session_diff(const TypioWlDesiredState *desired,
 /* ── Done classifier (pure helper, for tracing) ───────────────────────── */
 
 TypioWlDoneAction
-typio_wl_session_classify_done(bool was_active,
+typio_wl_focus_classify_done(bool was_active,
                                bool now_active,
                                bool activate_seen)
 {
@@ -177,7 +198,7 @@ typio_wl_session_classify_done(bool was_active,
 /* ── Guard predicates (pure, on a snapshotted actual) ────────────────── */
 
 bool
-typio_wl_session_can_route_keys(const TypioWlActualState *actual)
+typio_wl_focus_can_route_keys(const TypioWlActualState *actual)
 {
     if (!actual)
         return false;
@@ -185,7 +206,7 @@ typio_wl_session_can_route_keys(const TypioWlActualState *actual)
 }
 
 bool
-typio_wl_session_can_route_modifiers(const TypioWlActualState *actual)
+typio_wl_focus_can_route_modifiers(const TypioWlActualState *actual)
 {
     if (!actual)
         return false;
@@ -196,7 +217,7 @@ typio_wl_session_can_route_modifiers(const TypioWlActualState *actual)
 }
 
 bool
-typio_wl_session_is_transitioning(const TypioWlActualState *actual)
+typio_wl_focus_is_transitioning(const TypioWlActualState *actual)
 {
     if (!actual)
         return false;

@@ -14,7 +14,7 @@ delay keymap deadlines, lifecycle cleanup, or user-visible config changes.
 
 Every event-loop iteration dispatches Wayland events before any auxiliary
 work. This ordering ensures that input facts are fresh before any non-input
-work can delay the session controller's `reduce`/`diff`/`apply` pipeline.
+work can delay the focus controller's `reduce`/`diff`/`apply` pipeline.
 
 ```text
 [Wayland dispatch] ──▶ [record facts] ──▶ [reduce] ──▶ [observe] ──▶ [diff] ──▶ [apply]
@@ -118,8 +118,8 @@ Operational rules:
 
 Responsibility split:
 
-- session-controller effect summaries belong to `event_loop.c`
-- teardown-cause and grab create/destroy logs belong to `session_effects.c`
+- focus-controller effect summaries belong to `event_loop.c`
+- teardown-cause and grab create/destroy logs belong to `focus_effects.c`
 - virtual-keyboard health and fail-safe logs belong to `bridge.c`
 - per-key sequencing and modifier-path traces belong to `keyboard.c`
 - watchdog and dispatch-path logs belong to `event_loop.c`
@@ -178,7 +178,7 @@ deadline is the primary clue that the grab→keymap→vk chain did not close.
 
 - [Input-Method Session](input-method-session.md) — the three layers of
   "session", build-up chain, and lifecycle rules
-- [Session Controller](session-controller.md) — the reduce/diff/apply pipeline
+- [Focus Controller](focus-controller.md) — the reduce/diff/apply pipeline
   that runs inside the event loop
 - [Wayland Input Method Protocol](wayland-input-method.md) — protocol
   implementation and event handlers

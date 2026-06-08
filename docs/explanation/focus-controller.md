@@ -1,19 +1,17 @@
-# Session Controller
+# Focus Controller
 
 ## Purpose
 
-This document describes the session-controller lifecycle model for typio-linux's Wayland input-method path. It replaces the older stored-phase FSM (`INACTIVE → ACTIVATING → ACTIVE → DEACTIVATING`) plus debounced reconciler with a derived-state, idempotent-diff pipeline.
+The focus controller is the per-tick control loop that manages typio-linux's
+Wayland input-method **focus and keyboard-grab lifecycle**: grab create/destroy,
+`focus_in`/`focus_out`, keymap epoch scrubbing, and discarding an abandoned
+composition on defocus.
 
-The session controller is not a new subsystem added on top of the existing code. It is a **restructuring** of the same responsibilities — grab create/destroy, focus_in/focus_out, keymap epoch scrubbing — into a shape that eliminates drift between stored state and observed reality.
-
-## Current Status: Shadow Run
-
-The session controller pipeline (`reduce` → `observe` → `diff`) runs on every
-event-loop tick alongside the old reconciler. Its effects are **logged but not
-applied** while parity is validated. The old `transition_to_active`,
-`transition_to_inactive`, and `reconciler_tick` paths still own the imperative
-behavior. Once shadow-run logs show zero unexpected divergence, `apply()` will
-be wired in and the stored-phase FSM removed.
+It holds **no stored lifecycle phase**. The only persisted things are raw input
+facts and live resource handles. Every event-loop tick derives what the
+resources *should* be from what has happened, then converges them with a
+minimal, idempotent diff — so recovery is the normal path run against changed
+facts, not a separate branch.
 
 ## Design Declaration
 
@@ -71,7 +69,7 @@ daemon enters `SOFT_PAUSE`, releases forwarded keys, stops repeat, resets
 per-key tracking, and zeros the XKB modifier state — but keeps the grab
 object alive. The next `activate` reuses the existing grab, skipping the
 expensive xkb keymap compile and the `NEEDS_KEYMAP` window that drops keys.
-This is the behavior previously encoded in `keyboard_pause()`.
+The soft pause is applied through `keyboard_pause()`.
 
 Only hard boundaries (`suspend_gap_detected` or `connection_alive = false`)
 force `NONE`, which triggers a full teardown.
@@ -82,6 +80,11 @@ force `NONE`, which triggers a full teardown.
 - `focus_out` = (`grab != YES` && `prev.grab == YES`)
 
 The edge detection prevents repeated `focus_in`/`focus_out` calls while the state is stable across multiple ticks.
+
+**Reactivate.** A fresh `activate` inside a `done` batch while already `YES` —
+the compositor moved focus to a new field in the same window with no
+intervening `deactivate` — sets `reactivate`. The grab and the in-flight
+composition are preserved; only the panel anchor is refreshed.
 
 ### Actual State
 
@@ -96,7 +99,26 @@ typedef enum {
 } TypioWlGrabResourceState;
 ```
 
+```mermaid
+stateDiagram-v2
+    [*] --> ABSENT
+    ABSENT --> NEEDS_KEYMAP : create
+    NEEDS_KEYMAP --> READY : keymap
+    NEEDS_KEYMAP --> BROKEN : timeout
+    READY --> BROKEN : fail-safe
+    READY --> ABSENT : destroy
+    BROKEN --> ABSENT : destroy / rebuild
+```
+
 The grab resource state merges the keyboard grab object presence with the virtual-keyboard keymap readiness from `src/wayland/keyboard/bridge.c`. This is one resource with one state, not a phase plus a separate vk state machine.
+
+**Readiness rules** (the single source of truth for grab readiness):
+
+- creating/rebuilding the grab starts a new epoch and forces `NEEDS_KEYMAP`
+- old `READY` must never survive into a new grab epoch
+- `READY` requires a compositor keymap observed in the current epoch
+- a timeout in `NEEDS_KEYMAP`, or any `BROKEN`, is a fail-safe condition — prefer releasing the grab over forwarding through a partially broken path
+- modifier-mask updates may apply while `NEEDS_KEYMAP` (a grab built while a field stays focused), so held Ctrl/Alt/Super survive grab creation before the first new key press; key presses may not
 
 ### Effects
 
@@ -104,24 +126,36 @@ The grab resource state merges the keyboard grab object presence with the virtua
 
 | Condition | Effects |
 |-----------|---------|
-| `grab == NONE`, actual != `ABSENT` | `destroy_grab`, `clear_preedit`, `commit` |
+| `grab == NONE`, actual != `ABSENT` | `destroy_grab`, `scrub_generation`, `discard_composition`, `clear_preedit`, `commit` |
 | `grab == YES \| SOFT_PAUSE`, actual == `ABSENT` | `create_grab`, `scrub_generation` |
 | `grab == YES`, actual == `BROKEN` | `destroy_grab`, `create_grab`, `scrub_generation` |
 | `focus_in == true` | `send_focus_in` |
-| `focus_out == true` | `send_focus_out` |
+| `focus_out == true` | `send_focus_out`, `discard_composition`, `clear_preedit`, `commit` |
+| `reactivate == true` | `reactivate` (panel re-anchor) |
+
+`discard_composition` abandons the engine's in-flight composition and candidate
+UI when a field loses focus, so a half-typed attempt cannot leak into the next
+field or auto-commit into the one being left. Both defocus paths — soft-pause
+(`deactivate`) and hard-teardown (`suspend` / disconnect) — drive it.
 
 ### Apply
 
-`apply(effects)` executes in fixed order:
+`apply(effects)` executes in a fixed order, enforced by a compile-time
+`_Static_assert` in `focus_effects.c`:
 
-1. `send_focus_out`
-2. `destroy_grab` (runs the same teardown path as `hard_reset_keyboard`)
-3. `clear_preedit` + `commit`
-4. `scrub_generation`
-5. `create_grab`
-6. `send_focus_in`
+1. `discard_composition` — drop the engine's in-flight composition + candidate UI while still focused
+2. `send_focus_out`
+3. `destroy_grab` (runs the same teardown path as `focus_hard_reset_keyboard`)
+4. `clear_preedit`
+5. `commit`
+6. `scrub_generation`
+7. `create_grab`
+8. `send_focus_in`
+9. `reactivate` — re-anchor the panel to the new caret
 
-The order matters: focus leaves before teardown, preedit is cleared before the grab is recreated, and focus enters after the new grab is ready.
+The order matters: the abandoned composition is discarded before focus leaves,
+teardown happens before the grab is recreated, and focus enters after the new
+grab is ready.
 
 ## Per-Tick Workflow
 
@@ -133,17 +167,6 @@ The order matters: focus leaves before teardown, preedit is cleared before the g
 ```
 
 The pipeline runs once per event-loop iteration, after Wayland events have been dispatched and before auxiliary I/O (D-Bus, config reload, voice). This ordering ensures that input facts are fresh before any non-input work can delay the diff.
-
-## Behavioral Parity with Old Paths
-
-| Old Path | Old Behavior | New Model Equivalent |
-|----------|-------------|---------------------|
-| `transition_to_active` | `focus_in()` → create/reuse grab → `PHASE_ACTIVE` | `reduce: NONE/PAUSE → YES` → `focus_in=true` → `create_grab` |
-| `transition_to_inactive` | `focus_out()` → `keyboard_pause()` → retain grab → `PHASE_INACTIVE` | `reduce: YES → SOFT_PAUSE` → `focus_out=true` → **no destroy** |
-| `transition_to_reactivate` | No focus_in/out, retain grab, re-anchor panel | `reduce: YES → YES` → no edges → **no effects** |
-| `lifecycle_on_resume` | `hard_reset_keyboard()` → destroy → scrub → `PHASE_INACTIVE` | `facts.suspend_gap=true` → `reduce: → NONE` → `destroy_grab + scrub` |
-| `frontend_reconnect` | Teardown → `PHASE_INACTIVE` | `facts.connection_alive=false` → `reduce: → NONE` → `destroy_grab` |
-| reconciler 2s repair | `handle_resume("reconcile", 0)` | Not needed; diff converges every tick |
 
 ## Blind Spot: Dead-but-Present Resources
 
@@ -175,10 +198,10 @@ A future liveness probe may be added as a new fact source feeding into `reduce()
 
 | Module | Responsibility |
 |--------|---------------|
-| `src/engine/session_controller.{c,h}` | `reduce`, `diff`, data structures. Pure, testable without frontend or Wayland. |
-| `src/wayland/session_effects.c` | `observe` (reads frontend fields) and `apply` (mutates frontend/Wayland state). Effectful, tied to `TypioWlFrontend`. |
+| `src/engine/focus_controller.{c,h}` | `reduce`, `diff`, data structures. Pure, testable without frontend or Wayland. |
+| `src/wayland/focus_effects.c` | `observe` (reads frontend fields) and `apply` (mutates frontend/Wayland state). Effectful, tied to `TypioWlFrontend`. |
 | `src/wayland/event_loop.c` | Per-tick driver: records facts, calls reduce/observe/diff/apply in order. |
-| `src/wayland/keyboard/bridge.c` | Virtual-keyboard state machine (`ABSENT → NEEDS_KEYMAP → READY → BROKEN`). The session controller reads this state but does not own the transitions. |
+| `src/wayland/keyboard/bridge.c` | Virtual-keyboard state machine (`ABSENT → NEEDS_KEYMAP → READY → BROKEN`). The focus controller reads this state but does not own the transitions. |
 
 ## See Also
 

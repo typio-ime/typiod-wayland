@@ -108,12 +108,12 @@ test_resume_model = executable('test_resume_model',
 )
 test('resume_model', test_resume_model)
 
-test_session_controller = executable('test_session_controller',
-    ['engine/test_session_controller.c', '../src/engine/session_controller.c'],
+test_focus_controller = executable('test_focus_controller',
+    ['engine/test_focus_controller.c', '../src/engine/focus_controller.c'],
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,
 )
-test('session_controller', test_session_controller)
+test('focus_controller', test_focus_controller)
 
 test_reconnect_backoff = executable('test_reconnect_backoff',
     ['engine/test_reconnect_backoff.c', '../src/engine/backoff.c'],
@@ -124,7 +124,7 @@ test('reconnect_backoff', test_reconnect_backoff)
 
 test_state_machine_properties = executable('test_state_machine_properties',
     ['engine/test_state_machine_properties.c',
-     '../src/engine/session_controller.c',
+     '../src/engine/focus_controller.c',
      '../src/engine/backoff.c'],
     include_directories: wayland_test_inc,
     dependencies: libtypio_dep,

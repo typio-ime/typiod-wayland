@@ -4,11 +4,11 @@
  *        at done time.
  *
  * The event handlers in this file do exactly one thing per protocol event:
- * record a fact into `frontend->session_facts` (or the session's `pending`
- * buffer for the engine state). The session controller consumes the facts
+ * record a fact into `frontend->focus_facts` (or the session's `pending`
+ * buffer for the engine state). The focus controller consumes the facts
  * at the end of the event-loop tick, derives the desired resource
  * configuration, observes the live state, and applies the minimal
- * idempotent effect set. See `docs/explanation/session-controller.md`.
+ * idempotent effect set. See `docs/explanation/focus-controller.md`.
  *
  * The serial chokepoint lives in `typio_wl_commit()`: a commit before the
  * first `done` is silently dropped to keep the compositor from receiving
@@ -317,7 +317,7 @@ void typio_wl_commit(TypioWlFrontend *frontend) {
 
 /* Input method event handlers
  *
- * Each handler records a fact. The session controller's per-tick pipeline
+ * Each handler records a fact. The focus controller's per-tick pipeline
  * (event_loop.c) reads the facts and applies the right effects. There are
  * no imperative transitions here. */
 static void im_handle_activate(void *data, [[maybe_unused]] struct zwp_input_method_v2 *im) {
@@ -344,7 +344,7 @@ static void im_handle_activate(void *data, [[maybe_unused]] struct zwp_input_met
     /* Record that an activate arrived in this batch. The next `done` consumes
      * this to tell a genuine (re)activation apart from a plain text-state
      * update done (which must not rebuild focus state mid-composition). */
-    frontend->session_facts.im_activate_seen = true;
+    frontend->focus_facts.im_activate_seen = true;
 
     /* Reset session state for new activation. session_reset() clears
      * pending.active; the activate fact recorded above drives the
@@ -357,7 +357,7 @@ static void im_handle_deactivate(void *data, [[maybe_unused]] struct zwp_input_m
     TypioWlFrontend *frontend = data;
 
     typio_wl_trace(frontend, "im", "event=deactivate");
-    frontend->session_facts.im_deactivate_seen = true;
+    frontend->focus_facts.im_deactivate_seen = true;
 
     if (frontend->session) {
         frontend->session->pending.active = false;
@@ -425,19 +425,22 @@ static void im_handle_done(void *data, [[maybe_unused]] struct zwp_input_method_
      * deactivate facts accumulated since the previous done and records a
      * single boolean for the controller to reduce. */
     bool was_active = typio_input_context_is_focused(frontend->session->ctx);
-    frontend->session_facts.im_done_had_activate =
-        frontend->session_facts.im_activate_seen;
-    frontend->session_facts.im_done_serial = frontend->im_serial;
+    frontend->focus_facts.im_done_had_activate =
+        frontend->focus_facts.im_activate_seen;
+    frontend->focus_facts.im_done_had_deactivate =
+        frontend->focus_facts.im_deactivate_seen;
+    frontend->focus_facts.im_done_serial = frontend->im_serial;
 
     /* Apply pending engine-context state (surrounding text, content type)
      * atomically. The activate_seen / im_done_had_activate / pending.active
-     * facts are consumed by the session controller on the next pipeline run. */
+     * facts are consumed by the focus controller on the next pipeline run. */
     typio_wl_session_apply_pending(frontend->session);
 
     /* Clear the per-event activate / deactivate facts; the per-batch
-     * im_done_had_activate flag survives until reduce() consumes it. */
-    frontend->session_facts.im_activate_seen = false;
-    frontend->session_facts.im_deactivate_seen = false;
+     * im_done_had_activate / im_done_had_deactivate flags survive until
+     * reduce() consumes them (the event loop zeroes facts each tick). */
+    frontend->focus_facts.im_activate_seen = false;
+    frontend->focus_facts.im_deactivate_seen = false;
 
     typio_wl_trace(frontend,
                    "im_done",

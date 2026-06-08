@@ -9,7 +9,7 @@
  * helpers that convert monotonic timestamps into IPC-friendly deltas.
  *
  * The IPC `lifecycle_phase` string is derived from the actual grab resource
- * state (via typio_wl_session_observe), not from a stored phase. This is
+ * state (via typio_wl_focus_observe), not from a stored phase. This is
  * the only place the legacy `INACTIVE / ACTIVATING / ACTIVE / DEACTIVATING`
  * vocabulary leaks to the outside world, and it is computed fresh on every
  * read.
@@ -18,7 +18,7 @@
 #include "frontend.h"
 #include "internal.h"
 #include "clock.h"
-#include "session_controller.h"
+#include "focus_controller.h"
 #include "ipc/ipc_bus.h"
 
 #include "typio/abi/log.h"
@@ -54,7 +54,7 @@ void frontend_fill_runtime_state(void *user_data,
     state->frontend_backend = "wayland";
     state->lifecycle_phase =
         typio_wl_grab_resource_state_name(
-            typio_wl_session_observe(frontend).grab);
+            typio_wl_focus_observe(frontend).grab);
     state->virtual_keyboard_state =
         typio_wl_vk_state_name(frontend->vk ? frontend->vk->state
                                             : TYPIO_WL_VK_STATE_ABSENT);

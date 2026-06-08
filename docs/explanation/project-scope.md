@@ -120,8 +120,9 @@ structural:
   source of truth. See [Control Surfaces](control-surfaces.md).
 
 - **Crash recovery.** A compositor lock, DPMS-off, or system suspend must not
-  corrupt committed text or freeze the input path. The reconciler derives state
-  from facts every step, so recovery is the same code path as normal operation.
+  corrupt committed text or freeze the input path. The focus controller derives
+  state from facts every step, so recovery is the same code path as normal
+  operation.
   See [Input-Method Session](input-method-session.md).
 
 - **Cross-engine smoothness.** Switching engines must clear stale preedit and

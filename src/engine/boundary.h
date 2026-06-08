@@ -6,7 +6,7 @@
 #ifndef TYPIO_WL_BOUNDARY_BRIDGE_H
 #define TYPIO_WL_BOUNDARY_BRIDGE_H
 
-#include "engine/session_controller.h"
+#include "engine/focus_controller.h"
 
 #include <stdint.h>
 
