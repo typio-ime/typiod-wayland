@@ -17,10 +17,14 @@ env:
   # there (see meson.build "local cargo build" note).
   PKG_CONFIG_PATH: ${{ github.workspace }}/_libtypio/target/release
   LD_LIBRARY_PATH: ${{ github.workspace }}/_libtypio/target/release
+  # The libtypio release this host is developed and released against.
+  # Bump deliberately, in its own commit, when adopting new libtypio API,
+  # and keep the meson.build version floor in sync.
+  LIBTYPIO_PINNED_REF: v0.3.0
 
 jobs:
   build-test:
-    name: Build & test against libtypio
+    name: Build & test (libtypio pinned)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -37,15 +41,97 @@ jobs:
 
       # libtypio is a separate repo under the same owner. flux is pulled
       # by the host's subprojects/flux.wrap at configure time.
-      - name: Checkout libtypio
+      - name: Checkout libtypio (pinned)
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/libtypio
+          ref: ${{ env.LIBTYPIO_PINNED_REF }}
           path: _libtypio
 
       # libtypio is a Cargo project (cdylib + full C ABI headers); it has no
       # meson build. cargo build emits libtypio.so plus libtypio.pc /
       # typio-engine-abi.pc into target/release for pkg-config to pick up.
+      - name: Build libtypio
+        run: cargo build --release --manifest-path _libtypio/Cargo.toml
+
+      - name: Configure host
+        run: >
+          meson setup build --prefix="$HOME/.local"
+          -Dwerror=true -Denable_systray=true
+
+      - name: Build
+        run: ninja -C build
+
+      - name: Test
+        run: meson test -C build --print-errorlogs
+
+  sanitizers:
+    name: Build & test (ASan + UBSan)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            meson ninja-build pkg-config \
+            libwayland-dev wayland-protocols libxkbcommon-dev \
+            libdbus-1-dev libpipewire-0.3-dev \
+            libfreetype6-dev libharfbuzz-dev libfontconfig-dev \
+            libvulkan-dev glslang-tools
+
+      - name: Checkout libtypio (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/libtypio
+          ref: ${{ env.LIBTYPIO_PINNED_REF }}
+          path: _libtypio
+
+      - name: Build libtypio
+        run: cargo build --release --manifest-path _libtypio/Cargo.toml
+
+      - name: Configure host
+        run: >
+          meson setup build --prefix="$HOME/.local"
+          -Denable_systray=true -Denable_asan=true -Denable_ubsan=true
+
+      - name: Build
+        run: ninja -C build
+
+      - name: Test
+        env:
+          ASAN_OPTIONS: halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+          LSAN_OPTIONS: suppressions=${{ github.workspace }}/tests/asan_suppressions.txt
+        run: meson test -C build --print-errorlogs
+
+  # Early warning for upstream drift: build against libtypio main HEAD.
+  # Allowed to fail — a red canary means the next pin bump needs host
+  # changes, not that this commit is broken.
+  canary-libtypio-head:
+    name: Canary — libtypio main HEAD
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            meson ninja-build pkg-config \
+            libwayland-dev wayland-protocols libxkbcommon-dev \
+            libdbus-1-dev libpipewire-0.3-dev \
+            libfreetype6-dev libharfbuzz-dev libfontconfig-dev \
+            libvulkan-dev glslang-tools
+
+      - name: Checkout libtypio (main)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/libtypio
+          path: _libtypio
+
       - name: Build libtypio
         run: cargo build --release --manifest-path _libtypio/Cargo.toml
 
