@@ -108,6 +108,11 @@ static void init_frontend(TypioWlFrontend *frontend, TypioWlKeyboard *keyboard) 
     frontend->vk->state = TYPIO_WL_VK_STATE_ABSENT;
 }
 
+static void fini_frontend(TypioWlFrontend *frontend) {
+    free(frontend->vk);
+    free(frontend->tracker);
+}
+
 TEST(expect_keymap_sets_needs_keymap_state_and_deadline) {
     TypioWlFrontend frontend;
     TypioWlKeyboard keyboard;
@@ -119,6 +124,7 @@ TEST(expect_keymap_sets_needs_keymap_state_and_deadline) {
     ASSERT(frontend.vk->state == TYPIO_WL_VK_STATE_NEEDS_KEYMAP);
     ASSERT(!frontend.vk->has_keymap);
     ASSERT(frontend.vk->keymap_deadline_ms > 0);
+    fini_frontend(&frontend);
 }
 
 TEST(ready_state_clears_deadline_and_marks_keymap_present) {
@@ -134,6 +140,7 @@ TEST(ready_state_clears_deadline_and_marks_keymap_present) {
     ASSERT(frontend.vk->state == TYPIO_WL_VK_STATE_READY);
     ASSERT(frontend.vk->has_keymap);
     ASSERT(frontend.vk->keymap_deadline_ms == 0);
+    fini_frontend(&frontend);
 }
 
 TEST(broken_state_triggers_fail_safe) {
@@ -147,6 +154,7 @@ TEST(broken_state_triggers_fail_safe) {
     ASSERT(!typio_wl_vk_is_ready(&frontend, "key"));
     ASSERT(stop_count == 1);
     ASSERT(release_count == 1);
+    fini_frontend(&frontend);
 }
 
 TEST(keymap_timeout_triggers_fail_safe) {
@@ -164,6 +172,7 @@ TEST(keymap_timeout_triggers_fail_safe) {
 
     ASSERT(stop_count == 1);
     ASSERT(release_count == 1);
+    fini_frontend(&frontend);
 }
 
 TEST(cancelling_keymap_wait_restores_ready_state_after_grab_teardown) {
@@ -181,6 +190,7 @@ TEST(cancelling_keymap_wait_restores_ready_state_after_grab_teardown) {
     ASSERT(frontend.vk->state == TYPIO_WL_VK_STATE_READY);
     ASSERT(frontend.vk->has_keymap);
     ASSERT(frontend.vk->keymap_deadline_ms == 0);
+    fini_frontend(&frontend);
 }
 
 TEST(cancelling_keymap_wait_does_not_restore_stale_generation_keymap) {
@@ -199,6 +209,7 @@ TEST(cancelling_keymap_wait_does_not_restore_stale_generation_keymap) {
     ASSERT(frontend.vk->state == TYPIO_WL_VK_STATE_NEEDS_KEYMAP);
     ASSERT(!frontend.vk->has_keymap);
     ASSERT(frontend.vk->keymap_deadline_ms == 0);
+    fini_frontend(&frontend);
 }
 
 TEST(keymap_timeout_without_active_grab_is_ignored) {
@@ -215,6 +226,7 @@ TEST(keymap_timeout_without_active_grab_is_ignored) {
 
     ASSERT(stop_count == 0);
     ASSERT(release_count == 0);
+    fini_frontend(&frontend);
 }
 
 int main(void) {

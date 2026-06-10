@@ -171,6 +171,7 @@ static TypioWlKeyboard test_keyboard;
 static TypioWlSession test_session;
 
 static void setup(void) {
+    free(test_frontend.tracker);
     memset(&test_frontend, 0, sizeof(test_frontend));
     memset(&test_keyboard, 0, sizeof(test_keyboard));
     memset(&test_session, 0, sizeof(test_session));
@@ -402,6 +403,7 @@ int main(void) {
     run_test_timestamps_preserved_on_replay();
     run_test_no_engine_events_on_consume();
     run_test_reset_clears_mid_chord_buffering();
+    free(test_frontend.tracker);
     printf("\n%d/%d tests passed\n", tests_passed, tests_run);
     return tests_passed == tests_run ? 0 : 1;
 }
