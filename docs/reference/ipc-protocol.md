@@ -117,7 +117,7 @@ The `engine.*` namespace is cross-modality and keyed by engine name (aggregate q
 | `language.next` | `{}` | `{ active }` |
 | `language.prev` | `{}` | `{ active }` |
 
-`tag` is a BCP-47 language tag. The list is the enabled cycle: the `languages.enabled` config key when set, otherwise every engine-declared language in registration order. Activating a language retargets the keyboard and voice slots together (libtypio ADR-0018); per-language engine selection is plain config (`config.set languages.<tag>.keyboard <name>`, value `"none"` forces an empty slot). `language.next` / `language.prev` return invalid-params when no languages are enabled or declared.
+`tag` is a [BCP 47](https://www.rfc-editor.org/info/bcp47) language tag (see [Configuration § Language tag format](configuration.md)). The list is the enabled cycle: the `languages.enabled` config key when set, otherwise every engine-declared language in registration order. Activating a language retargets the keyboard and voice slots together (libtypio ADR-0018); per-language engine selection is plain config (`config.set languages.<tag>.keyboard <name>`, value `"none"` forces an empty slot). `language.next` / `language.prev` return invalid-params when no languages are enabled or declared.
 
 ### `daemon.*`
 

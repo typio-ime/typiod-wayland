@@ -12,6 +12,7 @@
 #include "typio/typio.h"
 #include "typio/abi/log.h"
 #include "typio/abi/string.h"
+#include "state/controller.h"
 
 #ifdef HAVE_LIBSYSTEMD
 #  include <systemd/sd-bus.h>
@@ -32,6 +33,17 @@
 #define TYPIO_TRAY_CMD_BASE     600
 #define TYPIO_TRAY_CMD_MAX      32
 
+/* Language items (ADR-0031): the primary switch. Addressed as
+ * LANG_BASE + index; engines below are the within-language choice. */
+#define TYPIO_TRAY_LANG_BASE    300
+#define TYPIO_TRAY_LANG_MAX     16
+
+/* Voice engine items (ADR-0026): the voice slot is orthogonal to the keyboard
+ * slot and active simultaneously, so it gets its own list. Addressed as
+ * VOICE_BASE + index. */
+#define TYPIO_TRAY_VOICE_BASE   400
+#define TYPIO_TRAY_VOICE_MAX    16
+
 /* ── small sd-bus a{sv} helpers ────────────────────────────────────────── */
 
 #ifdef HAVE_LIBSYSTEMD
@@ -45,6 +57,38 @@ static int append_empty_pixmap_array(sd_bus_message *m) {
     r = sd_bus_message_open_container(m, 'a', "(iiay)");
     if (r < 0) return r;
     return sd_bus_message_close_container(m);
+}
+
+/*
+ * Append the tray's rendered badge bitmaps as an a(iiay) pixmap array
+ * (ADR-0032). Each entry is (width, height, big-endian ARGB32 bytes). Falls
+ * back to an empty array when no badge is set.
+ */
+static int append_badge_pixmap_array(sd_bus_message *m, TypioTray *tray) {
+    int r = sd_bus_message_open_container(m, 'a', "(iiay)");
+    if (r < 0) return r;
+    for (size_t i = 0; i < tray->badge_pixmap_count; i++) {
+        const TypioBadgePixmap *p = &tray->badge_pixmaps[i];
+        if (!p->argb || p->width <= 0 || p->height <= 0) continue;
+        r = sd_bus_message_open_container(m, 'r', "iiay");
+        if (r < 0) return r;
+        r = sd_bus_message_append_basic(m, 'i', &p->width);
+        if (r < 0) return r;
+        r = sd_bus_message_append_basic(m, 'i', &p->height);
+        if (r < 0) return r;
+        r = sd_bus_message_append_array(m, 'y', p->argb,
+                                        (size_t)p->width * (size_t)p->height * 4u);
+        if (r < 0) return r;
+        r = sd_bus_message_close_container(m); /* r */
+        if (r < 0) return r;
+    }
+    return sd_bus_message_close_container(m); /* a */
+}
+
+/* True when a language badge is active and should drive the icon (suppressing
+ * the named IconName). */
+static bool tray_badge_active(const TypioTray *tray) {
+    return tray->badge_pixmap_count > 0;
 }
 
 static const char *tray_status_str(TypioTrayStatus status) {
@@ -103,21 +147,27 @@ static int sni_property_value(sd_bus_message *m, const char *property,
     } else if (strcmp(property, "Status") == 0) {
         return sd_bus_message_append_basic(m, 's', tray_status_str(tray->status));
     } else if (strcmp(property, "IconName") == 0) {
-        const char *val = tray->icon_name ? tray->icon_name
+        /* Suppressed while a badge drives IconPixmap, so the pixmap wins. */
+        const char *val = tray_badge_active(tray) ? ""
+                        : tray->icon_name ? tray->icon_name
                                           : "typio-keyboard-symbolic";
         return sd_bus_message_append_basic(m, 's', val);
     } else if (strcmp(property, "IconThemePath") == 0) {
         const char *val = tray->icon_theme_path ? tray->icon_theme_path : "";
         return sd_bus_message_append_basic(m, 's', val);
-    } else if (strcmp(property, "IconPixmap") == 0 ||
-               strcmp(property, "OverlayIconPixmap") == 0 ||
+    } else if (strcmp(property, "IconPixmap") == 0) {
+        return append_badge_pixmap_array(m, tray);
+    } else if (strcmp(property, "OverlayIconPixmap") == 0 ||
                strcmp(property, "AttentionIconPixmap") == 0) {
         return append_empty_pixmap_array(m);
-    } else if (strcmp(property, "OverlayIconName") == 0 ||
-               strcmp(property, "AttentionIconName") == 0) {
+    } else if (strcmp(property, "OverlayIconName") == 0) {
+        const char *val = tray->overlay_icon_name ? tray->overlay_icon_name : "";
+        return sd_bus_message_append_basic(m, 's', val);
+    } else if (strcmp(property, "AttentionIconName") == 0) {
         return sd_bus_message_append_basic(m, 's', "");
     } else if (strcmp(property, "ToolTip") == 0) {
-        const char *icon = tray->icon_name ? tray->icon_name
+        const char *icon = tray_badge_active(tray) ? ""
+                         : tray->icon_name ? tray->icon_name
                                             : "typio-keyboard-symbolic";
         const char *title = tray->tooltip_title ? tray->tooltip_title : "Typio";
         const char *desc = tray->tooltip_description ? tray->tooltip_description : "";
@@ -325,6 +375,40 @@ static int handle_menu_getlayout(sd_bus_message *m, TypioTray *tray) {
     if (r < 0) goto fail;
 
     TypioRegistry *registry = typio_instance_get_registry(tray->instance);
+
+    /* Language section first (ADR-0031): selecting a language is the primary
+     * switch; it re-resolves the keyboard/voice slots. The engine list below
+     * is a within-language choice. */
+    if (registry) {
+        size_t lang_count = 0;
+        char **langs = typio_registry_list_languages(registry, &lang_count);
+        char *active_lang = typio_registry_get_active_language(registry);
+        size_t lang_shown = 0;
+        for (size_t i = 0; i < lang_count && i < TYPIO_TRAY_LANG_MAX; i++) {
+            const char *display = typio_language_endonym(langs[i]);
+            bool is_current = active_lang && strcmp(langs[i], active_lang) == 0;
+            if (is_current) {
+                snprintf(label, sizeof(label), "● %s", display ? display : langs[i]);
+            } else {
+                snprintf(label, sizeof(label), "  %s", display ? display : langs[i]);
+            }
+            r = build_menu_item(reply, TYPIO_TRAY_LANG_BASE + (int32_t)i,
+                                label, nullptr, 1);
+            if (r < 0) {
+                typio_free_string(active_lang);
+                typio_free_string_array(langs, lang_count);
+                goto fail;
+            }
+            lang_shown++;
+        }
+        typio_free_string(active_lang);
+        typio_free_string_array(langs, lang_count);
+        if (lang_shown > 0) {
+            r = build_menu_item(reply, item_id++, nullptr, "separator", 1);
+            if (r < 0) goto fail;
+        }
+    }
+
     if (registry) {
         size_t engine_count;
         char **engines = typio_registry_list_ordered_keyboards(registry, &engine_count);
@@ -357,6 +441,43 @@ static int handle_menu_getlayout(sd_bus_message *m, TypioTray *tray) {
             }
         }
         typio_free_string_array(engines, engine_count);
+    }
+
+    /* Voice engine section (ADR-0026): the voice slot is independent of the
+     * keyboard slot, so it lists separately and marks its own active entry.
+     * Only shown when at least one voice engine is registered. */
+    if (registry) {
+        size_t voice_count = 0;
+        char **voices = typio_registry_list_voices(registry, &voice_count);
+        char *active_voice = typio_registry_get_active_voice(registry);
+        size_t voice_shown = 0;
+        for (size_t i = 0; i < voice_count && i < TYPIO_TRAY_VOICE_MAX; i++) {
+            const TypioEngineInfo *info = typio_registry_get_engine_info(registry, voices[i]);
+            const char *display = (info && info->display_name && info->display_name[0])
+                ? info->display_name : voices[i];
+            bool is_current = active_voice && strcmp(voices[i], active_voice) == 0;
+            if (is_current) {
+                snprintf(label, sizeof(label), "● %s", display);
+            } else {
+                snprintf(label, sizeof(label), "  %s", display);
+            }
+            r = build_menu_item(reply, TYPIO_TRAY_VOICE_BASE + (int32_t)i,
+                                label, nullptr, 1);
+            if (r < 0) {
+                typio_engine_info_free((TypioEngineInfo *)info);
+                typio_free_string(active_voice);
+                typio_free_string_array(voices, voice_count);
+                goto fail;
+            }
+            typio_engine_info_free((TypioEngineInfo *)info);
+            voice_shown++;
+        }
+        typio_free_string(active_voice);
+        typio_free_string_array(voices, voice_count);
+        if (voice_shown > 0) {
+            r = build_menu_item(reply, item_id++, nullptr, "separator", 1);
+            if (r < 0) goto fail;
+        }
     }
 
     r = build_menu_item(reply, 98, "Restart", nullptr, 1);
@@ -411,6 +532,34 @@ static int handle_menu_event(sd_bus_message *m, TypioTray *tray) {
                     tray->menu_callback(tray, action, tray->user_data);
                 }
                 typio_free_string_array(engines, engine_count);
+            }
+        } else if (id >= TYPIO_TRAY_LANG_BASE &&
+                   id < TYPIO_TRAY_LANG_BASE + TYPIO_TRAY_LANG_MAX) {
+            int lang_idx = id - TYPIO_TRAY_LANG_BASE;
+            TypioRegistry *registry = typio_instance_get_registry(tray->instance);
+            if (registry) {
+                size_t lang_count = 0;
+                char **langs = typio_registry_list_languages(registry, &lang_count);
+                if ((size_t)lang_idx < lang_count && tray->menu_callback) {
+                    char action[128];
+                    snprintf(action, sizeof(action), "language:%s", langs[lang_idx]);
+                    tray->menu_callback(tray, action, tray->user_data);
+                }
+                typio_free_string_array(langs, lang_count);
+            }
+        } else if (id >= TYPIO_TRAY_VOICE_BASE &&
+                   id < TYPIO_TRAY_VOICE_BASE + TYPIO_TRAY_VOICE_MAX) {
+            int voice_idx = id - TYPIO_TRAY_VOICE_BASE;
+            TypioRegistry *registry = typio_instance_get_registry(tray->instance);
+            if (registry) {
+                size_t voice_count = 0;
+                char **voices = typio_registry_list_voices(registry, &voice_count);
+                if ((size_t)voice_idx < voice_count && tray->menu_callback) {
+                    char action[128];
+                    snprintf(action, sizeof(action), "voice:%s", voices[voice_idx]);
+                    tray->menu_callback(tray, action, tray->user_data);
+                }
+                typio_free_string_array(voices, voice_count);
             }
         }
     }
@@ -568,6 +717,16 @@ void typio_tray_set_status(TypioTray *tray, TypioTrayStatus status) {
     typio_tray_sni_emit_signal(tray, "NewStatus");
 }
 
+/* Release any rendered badge bitmaps and the cached badge text. */
+static void tray_clear_badge(TypioTray *tray) {
+    for (size_t i = 0; i < tray->badge_pixmap_count; i++) {
+        typio_badge_pixmap_free(&tray->badge_pixmaps[i]);
+    }
+    tray->badge_pixmap_count = 0;
+    free(tray->badge_text);
+    tray->badge_text = nullptr;
+}
+
 void typio_tray_set_icon(TypioTray *tray, const char *icon_name) {
     if (!tray) {
         return;
@@ -575,13 +734,73 @@ void typio_tray_set_icon(TypioTray *tray, const char *icon_name) {
 
     const char *proposed = icon_name && *icon_name
         ? icon_name : "typio-keyboard-symbolic";
-    if (tray->icon_name && strcmp(tray->icon_name, proposed) == 0) {
+    bool had_badge = tray->badge_pixmap_count > 0;
+    bool name_same = tray->icon_name && strcmp(tray->icon_name, proposed) == 0;
+    /* Setting a named icon supersedes a badge; re-emit even if the name is
+     * unchanged so the host drops the now-suppressed pixmap. */
+    if (name_same && !had_badge) {
         return;
     }
 
+    tray_clear_badge(tray);
     free(tray->icon_name);
     tray->icon_name = typio_strdup(proposed);
     typio_tray_sni_emit_signal(tray, "NewIcon");
+}
+
+void typio_tray_set_badge(TypioTray *tray, const char *badge_text) {
+    if (!tray) {
+        return;
+    }
+    if (!badge_text || !badge_text[0]) {
+        if (tray->badge_pixmap_count > 0) {
+            tray_clear_badge(tray);
+            typio_tray_sni_emit_signal(tray, "NewIcon");
+        }
+        return;
+    }
+    /* Unchanged badge already rendered — nothing to do. */
+    if (tray->badge_pixmap_count > 0 && tray->badge_text &&
+        strcmp(tray->badge_text, badge_text) == 0) {
+        return;
+    }
+
+    /* White glyphs with a dark halo (see icon_badge.c) read on any panel. */
+    const int sizes[TYPIO_TRAY_BADGE_SIZES] = { 22, 44 };
+    TypioBadgePixmap rendered[TYPIO_TRAY_BADGE_SIZES] = {0};
+    size_t n = typio_icon_badge_render(badge_text, sizes, TYPIO_TRAY_BADGE_SIZES,
+                                       0xFFFFFFu, rendered,
+                                       TYPIO_TRAY_BADGE_SIZES);
+    if (n == 0) {
+        /* Rasterisation unavailable: keep the named icon already in place as
+         * the fallback (ADR-0032); do not disturb it. */
+        return;
+    }
+
+    tray_clear_badge(tray);
+    for (size_t i = 0; i < n; i++) {
+        tray->badge_pixmaps[i] = rendered[i];
+    }
+    tray->badge_pixmap_count = n;
+    tray->badge_text = typio_strdup(badge_text);
+    typio_tray_sni_emit_signal(tray, "NewIcon");
+}
+
+void typio_tray_set_overlay_icon(TypioTray *tray, const char *icon_name) {
+    if (!tray) {
+        return;
+    }
+    bool want = icon_name && icon_name[0];
+    bool have = tray->overlay_icon_name && tray->overlay_icon_name[0];
+    if (!want && !have) {
+        return;
+    }
+    if (want && have && strcmp(tray->overlay_icon_name, icon_name) == 0) {
+        return;
+    }
+    free(tray->overlay_icon_name);
+    tray->overlay_icon_name = want ? typio_strdup(icon_name) : nullptr;
+    typio_tray_sni_emit_signal(tray, "NewOverlayIcon");
 }
 
 void typio_tray_set_icon_theme_path(TypioTray *tray, const char *icon_theme_path) {

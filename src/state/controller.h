@@ -20,6 +20,8 @@
 
 #include "typio/abi/types.h"
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -74,10 +76,41 @@ const char *typio_state_controller_get_active_language(
     TypioStateController *ctrl);
 const char *typio_state_controller_get_status_icon(
     TypioStateController *ctrl);
+/* True when the status icon resolved to the language floor and should be drawn
+ * as a text badge (ADR-0032) rather than looked up as a freedesktop name.
+ * get_status_icon() then holds a generic name for render-failure fallback. */
+bool typio_state_controller_get_status_icon_is_badge(
+    TypioStateController *ctrl);
+/* The badge text (language script glyphs) when is_badge is true, else NULL. */
+const char *typio_state_controller_get_status_badge_text(
+    TypioStateController *ctrl);
 bool typio_state_controller_get_engine_active(
     TypioStateController *ctrl);
 const TypioKeyboardEngineMode *typio_state_controller_get_current_status(
     TypioStateController *ctrl);
+
+/**
+ * @brief Map a BCP-47 language tag to its endonym for display.
+ *
+ * The registry exposes only the raw tag (ADR-0031); libtypio has no
+ * language-display API, so the host owns this presentation table. Returns the
+ * tag itself for anything unlisted (so new languages still render), or NULL for
+ * a NULL/empty tag. The returned string is static — do not free.
+ */
+const char *typio_language_endonym(const char *tag);
+
+/**
+ * @brief Compact one-to-three glyph badge for a BCP-47 tag (e.g. 中 / あ / الد
+ *        / EN), written into @p out.
+ *
+ * The language is the reliable visual identity (ADR-0031): it is always present
+ * — even for layout-only languages with no engine — and stable across engine /
+ * mode churn. This badge is the icon-sized form used by the on-screen indicator
+ * (and, in future, the tray pixmap). Unlisted tags fall back to the uppercased
+ * primary subtag (e.g. `ary-x` → `ARY`). @p out is set to an empty string for a
+ * NULL/empty tag.
+ */
+void typio_language_badge(const char *tag, char *out, size_t out_size);
 
 /* -------------------------------------------------------------------------- */
 /* Notifications from Core — called by the daemon's Rust→C callbacks          */

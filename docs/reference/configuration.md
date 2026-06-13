@@ -39,6 +39,44 @@ Parsed by libtypio (ADR-0018 / [ADR-0031](../adr/0031-language-first-switching-s
 The **language** (a BCP-47 tag) is the user-facing switch unit: activating a
 language retargets the keyboard and voice engine slots together.
 
+#### Language tag format — BCP 47 (normative)
+
+All language tags in this project — `[languages].enabled`, the `[languages.<tag>]`
+table names, the engine-manifest `language` / `languages` keys, the `language.*`
+IPC verbs, and engine-declared languages — **follow [BCP 47](https://www.rfc-editor.org/info/bcp47)**.
+This is the single standard contributors should reference; do not invent ad-hoc
+codes.
+
+BCP 47 is defined by two IETF RFCs, with subtag *values* drawn from the IANA
+registry and underlying ISO standards:
+
+| Reference | Role |
+|-----------|------|
+| [RFC 5646](https://www.rfc-editor.org/rfc/rfc5646) | Tag *syntax* (how subtags compose) |
+| [RFC 4647](https://www.rfc-editor.org/rfc/rfc4647) | Tag *matching* and fallback |
+| [IANA Language Subtag Registry](https://www.iana.org/assignments/language-subtag-registry/) | Authoritative list of valid subtags |
+| ISO 639-1/-2/-3, ISO 15924, ISO 3166-1 | Source standards for language, script, and region subtags |
+
+A tag is subtags joined by hyphens, `language[-script][-region]`:
+
+| Example | Decoded | Subtag standards |
+|---------|---------|------------------|
+| `en` | English | ISO 639-1 |
+| `zh-Hans` | Chinese, Simplified Han script | ISO 639-1 + ISO 15924 |
+| `ary` | Moroccan Darija (no two-letter code exists) | ISO 639-3 |
+| `ar-MA` | Arabic as localized to Morocco | ISO 639-1 + ISO 3166-1 |
+
+Guidance:
+
+- Use **`ary`** for the Moroccan Darija vernacular. `ar-MA` is *Arabic localized
+  to Morocco* (typically Modern Standard Arabic) — a different language.
+- Prefer a **script** subtag (`zh-Hans` / `zh-Hant`) over a region subtag
+  (`zh-CN` / `zh-TW`) when the distinction you mean is the writing system.
+- The host treats tags as opaque and passes them to libtypio, which owns
+  resolution and matching (RFC 4647). The only host-side interpretation is the
+  tray/indicator endonym lookup, which keys on the **primary subtag** — so any
+  `-script` / `-region` suffix still resolves to a display name.
+
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `enabled` | array (or comma-separated string) | every engine-declared language | Ordered cycle for the `switch_language` chord. May include tags no engine declares (layout-only languages). |
@@ -49,22 +87,36 @@ Per-language engine selection lives in `[languages.<tag>]` tables:
 |-----|------|---------|-------------|
 | `keyboard` | string | first keyboard engine declaring `<tag>` | Keyboard engine for the language. `"none"` forces an empty slot: keys pass through raw with the system layout (layout-only languages such as Moroccan Darija). |
 | `voice` | string | first voice engine declaring `<tag>` | Voice engine for the language. `"none"` forces an empty slot. |
+| `icon` | string | *(language badge / generic)* | Freedesktop icon name for the tray/indicator when this language is active. Overrides the generic icon; outranked by an engine-supplied icon. Most useful for layout-only languages, which have no engine icon. |
 
 ```toml
 [languages]
-enabled = ["zh-Hans", "en", "ar-MA"]
+enabled = ["zh-Hans", "en", "ary"]
 
 [languages.zh-Hans]
 keyboard = "rime"
 voice    = "whisper"
 
-[languages.ar-MA]
-keyboard = "none"     # layout-only: raw passthrough
+[languages.ary]
+keyboard = "none"     # Moroccan Darija — layout-only: raw passthrough
 ```
 
 At startup the daemon restores the persisted active language; the legacy
 `keyboard.engine` / `voice.engine` chain below applies only when no languages
 are enabled or declared.
+
+#### Tray icon and the language badge (ADR-0032)
+
+The tray icon is resolved by a precedence chain, most-specific first: the active
+engine's mode/schema icon → the engine manifest `icon` → `[languages.<tag>].icon`
+→ a **language text badge** → a generic glyph. The badge is a 1–3 glyph label
+rendered in the language's own script (中 / あ / الد / EN), so the icon reflects
+the active language even for layout-only languages with no engine (e.g. Darija).
+Set `[languages.<tag>].icon` to override the badge with a themed icon. A voice
+engine, when active, shows as a microphone overlay on the icon's corner; *which*
+voice/keyboard engine is selected is shown in the tray menu and tooltip, not the
+icon. The badge needs FreeType/HarfBuzz/Fontconfig (present in the standard
+build); without them the icon falls back to the generic glyph name.
 
 ### `[shortcuts]` — global shortcuts
 

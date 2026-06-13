@@ -91,6 +91,26 @@ void typio_tray_set_status(TypioTray *tray, TypioTrayStatus status);
 void typio_tray_set_icon(TypioTray *tray, const char *icon_name);
 
 /**
+ * @brief Set the tray icon to a rendered language text badge (ADR-0032).
+ * @param tray System tray
+ * @param badge_text Short script glyphs (e.g. "中" / "الد" / "EN"); NULL or
+ *                   empty clears the badge and reverts to the named icon.
+ *
+ * Rasterises @p badge_text to ARGB32 pixmaps carried on IconPixmap, so the
+ * icon is the active language even for layout-only languages with no engine.
+ * Mutually exclusive with typio_tray_set_icon (each clears the other). Falls
+ * back to leaving the named icon in place if rasterisation is unavailable.
+ */
+void typio_tray_set_badge(TypioTray *tray, const char *badge_text);
+
+/**
+ * @brief Set the corner overlay icon (ADR-0032): voice-slot presence.
+ * @param tray System tray
+ * @param icon_name Freedesktop icon name; NULL or empty clears the overlay.
+ */
+void typio_tray_set_overlay_icon(TypioTray *tray, const char *icon_name);
+
+/**
  * @brief Set the tray icon theme path
  * @param tray System tray
  * @param icon_theme_path Extra icon theme search path (directory containing hicolor/)

@@ -22,7 +22,7 @@
 # keyboard-engine cycling.
 
 # [languages]
-# enabled = ["zh-Hans", "en", "ar-MA"]
+# enabled = ["zh-Hans", "en", "ar-MA", "ary"]
 #
 # [languages.zh-Hans]
 # keyboard = "rime"
@@ -30,6 +30,11 @@
 #
 # [languages.ar-MA]
 # keyboard = "none"      # layout-only: raw passthrough
+#
+# Moroccan Darija needs no engine — it is a layout-only language. Leave the
+# keyboard slot empty so keys pass through onto the system Arabic XKB layout.
+# [languages.ary]
+# keyboard = "none"
 
 [keyboard]
 # Remember and restore the keyboard engine and engine mode per application.

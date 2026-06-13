@@ -113,6 +113,7 @@ if enable_systray
     host_sources += files(
         'tray/bus.c',
         'tray/sni.c',
+        'tray/icon_badge.c',
     )
 endif
 
@@ -123,13 +124,20 @@ if enable_voice
 endif
 
 # ── Dependencies ──────────────────────────────────────────────────────────
-host_deps = [libtypio_dep, vulkan_dep]
+host_deps = [libtypio_dep]
 
 if enable_wayland
-    host_deps += [wayland_client_dep, xkbcommon_dep]
+    # vulkan is the loader for the flux GPU candidate panel — Wayland-only.
+    host_deps += [wayland_client_dep, xkbcommon_dep, vulkan_dep]
     if flux_dep.found()
         host_deps += flux_dep
     endif
+endif
+
+# FreeType + HarfBuzz + Fontconfig are needed by the Wayland panel glyph stack
+# AND by the tray's language-badge rasteriser (ADR-0032), which builds in
+# systray-only configurations too. Resolve them once for either consumer.
+if enable_wayland or enable_systray
     fontconfig_dep = dependency('fontconfig', required: true)
     harfbuzz_dep = dependency('harfbuzz', required: true)
     freetype_dep = dependency('freetype2', required: true)

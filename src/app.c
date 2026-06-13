@@ -144,12 +144,16 @@ static void typio_update_tray_tooltip(TypioApp *app) {
     bool keyboard_label_owned = false;
     bool voice_label_owned = false;
     char description[256];
+    char *lang_tag_owned = nullptr;
+    const char *lang_tag = nullptr;
 
     if (!app || !app->tray) {
         return;
     }
 
     if (app->state_controller) {
+        lang_tag =
+            typio_state_controller_get_active_language(app->state_controller);
         keyboard_label =
             typio_state_controller_get_active_engine_display_name(
                 app->state_controller);
@@ -168,6 +172,9 @@ static void typio_update_tray_tooltip(TypioApp *app) {
         }
     } else if (app->instance) {
         TypioRegistry *registry = typio_instance_get_registry(app->instance);
+        lang_tag_owned = registry
+            ? typio_registry_get_active_language(registry) : nullptr;
+        lang_tag = lang_tag_owned;
         char *kb_name = registry
             ? typio_registry_get_active_keyboard(registry) : nullptr;
         char *voice_name = registry
@@ -210,15 +217,27 @@ static void typio_update_tray_tooltip(TypioApp *app) {
         }
     }
 
+    /* Language-first tooltip (ADR-0031): the language is the primary switch;
+     * keyboard/voice engines are what the active language resolved to. */
+    const char *lang_label = typio_language_endonym(lang_tag);
+    char lang_line[96];
+    if (lang_label) {
+        snprintf(lang_line, sizeof(lang_line), "Language: %s\n", lang_label);
+    } else {
+        lang_line[0] = '\0';
+    }
+
     if (profile_label) {
         snprintf(description, sizeof(description),
-                 "Keyboard: %s (%s)\nVoice: %s",
+                 "%sKeyboard: %s (%s)\nVoice: %s",
+                 lang_line,
                  keyboard_label,
                  profile_label,
                  voice_label);
     } else {
         snprintf(description, sizeof(description),
-                 "Keyboard: %s\nVoice: %s",
+                 "%sKeyboard: %s\nVoice: %s",
+                 lang_line,
                  keyboard_label,
                  voice_label);
     }
@@ -230,6 +249,7 @@ static void typio_update_tray_tooltip(TypioApp *app) {
     if (voice_label_owned) {
         typio_free_string((char *)voice_label);
     }
+    typio_free_string(lang_tag_owned);
 }
 #endif
 
@@ -272,8 +292,13 @@ static void typio_update_tray_engine_status(TypioApp *app) {
             typio_state_controller_get_active_engine_name(app->state_controller);
         icon_name =
             typio_state_controller_get_status_icon(app->state_controller);
+        /* A layout-only language (empty keyboard slot, e.g. Darija) is active
+         * even with no engine — keys pass through to the system layout. Keep
+         * this in sync with tray/bus.c (ADR-0031). */
         is_active =
-            typio_state_controller_get_engine_active(app->state_controller);
+            typio_state_controller_get_engine_active(app->state_controller) ||
+            typio_state_controller_get_active_language(app->state_controller)
+                != nullptr;
     } else if (app->instance) {
         TypioRegistry *registry = typio_instance_get_registry(app->instance);
         active_name = registry
@@ -294,7 +319,23 @@ static void typio_update_tray_engine_status(TypioApp *app) {
         return;
     }
 
-    typio_tray_set_icon(app->tray, icon_name);
+    /* Honour the language-floor badge (ADR-0032): when the controller resolved
+     * the icon to a badge, render it; otherwise use the named icon. Mirrors
+     * tray/bus.c's state-change handler so startup sync and live updates agree.
+     * Also surface voice presence on the corner overlay. */
+    if (app->state_controller &&
+        typio_state_controller_get_status_icon_is_badge(app->state_controller)) {
+        typio_tray_set_badge(app->tray,
+            typio_state_controller_get_status_badge_text(app->state_controller));
+    } else {
+        typio_tray_set_icon(app->tray, icon_name);
+    }
+    if (app->state_controller) {
+        const char *voice = typio_state_controller_get_active_voice_engine_name(
+            app->state_controller);
+        typio_tray_set_overlay_icon(app->tray,
+            voice ? "audio-input-microphone-symbolic" : nullptr);
+    }
     typio_tray_update_engine(app->tray, engine_name, is_active);
     typio_update_tray_tooltip(app);
 }
@@ -383,27 +424,34 @@ static void typio_on_engine_change(TypioInstance *instance,
 
     registry = typio_instance_get_registry(app->instance);
     active_name = registry ? typio_registry_get_active_keyboard(registry) : nullptr;
-    if (active_name) {
 #ifdef HAVE_WAYLAND
-        if (app && app->wl_frontend) {
-            TypioWlFrontend *fe = app->wl_frontend;
-            /* Safety net: clear stale composition UI from any engine switch
-             * path (tray menu, IPC, etc.) that did not pre-clean like the
-             * arbiter does.  Idempotent when the arbiter already cleared. */
-            typio_wl_set_preedit(fe, "", -1, -1);
-            typio_wl_commit(fe);
-            typio_wl_panel_coordinator_hide(fe, TYPIO_WL_UI_OWNER_CANDIDATE);
-            if (fe->session) {
-                typio_wl_session_cancel_ui_tracking(fe->session);
-            }
-            typio_wl_frontend_remember_active_engine(app->wl_frontend,
-                                                     active_name);
-            typio_wl_frontend_show_indicator_for_state(app->wl_frontend, nullptr);
+    if (app && app->wl_frontend) {
+        TypioWlFrontend *fe = app->wl_frontend;
+        /* Safety net: clear stale composition UI from any engine switch
+         * path (tray menu, IPC, etc.) that did not pre-clean like the
+         * arbiter does.  Idempotent when the arbiter already cleared. */
+        typio_wl_set_preedit(fe, "", -1, -1);
+        typio_wl_commit(fe);
+        typio_wl_panel_coordinator_hide(fe, TYPIO_WL_UI_OWNER_CANDIDATE);
+        if (fe->session) {
+            typio_wl_session_cancel_ui_tracking(fe->session);
         }
-#endif
-        typio_log_info("Engine changed to: %s", active_name);
-        typio_free_string(active_name);
+        if (active_name) {
+            typio_wl_frontend_remember_active_engine(fe, active_name);
+        }
+        /* Show the indicator regardless of whether a keyboard engine is
+         * active: the label is language-first (ADR-0031) and renders the
+         * language alone when the keyboard slot is empty, so switching to a
+         * layout-only language (e.g. Darija) still confirms on screen. */
+        typio_wl_frontend_show_indicator_for_state(fe, nullptr);
     }
+#endif
+    if (active_name) {
+        typio_log_info("Engine changed to: %s", active_name);
+    } else {
+        typio_log_info("Keyboard slot cleared (layout-only language)");
+    }
+    typio_free_string(active_name);
 }
 
 static void typio_on_voice_engine_change(TypioInstance *instance,
@@ -484,6 +532,19 @@ static void typio_tray_menu_callback([[maybe_unused]] TypioTray *tray,
         return;
     }
 
+    if (strncmp(action, "language:", 9) == 0) {
+        const char *tag = action + 9;
+
+        TypioResult result = typio_registry_set_active_language(registry, tag);
+        if (result == TYPIO_OK) {
+            typio_log_info("Switched to language: %s", tag);
+        } else {
+            typio_log_error("Failed to switch to language '%s': error %d",
+                            tag, result);
+        }
+        return;
+    }
+
     if (strncmp(action, "engine:", 7) == 0) {
         const char *engine_name = action + 7;
 
@@ -492,6 +553,19 @@ static void typio_tray_menu_callback([[maybe_unused]] TypioTray *tray,
             typio_log_info("Switched to engine: %s", engine_name);
         } else {
             typio_log_error("Failed to switch to engine '%s': error %d", engine_name, result);
+        }
+        return;
+    }
+
+    if (strncmp(action, "voice:", 6) == 0) {
+        const char *voice_name = action + 6;
+
+        TypioResult result = typio_registry_set_active_voice(registry, voice_name);
+        if (result == TYPIO_OK) {
+            typio_log_info("Switched to voice engine: %s", voice_name);
+        } else {
+            typio_log_error("Failed to switch to voice engine '%s': error %d",
+                            voice_name, result);
         }
         return;
     }

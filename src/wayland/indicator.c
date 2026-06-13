@@ -1,5 +1,6 @@
 #include "internal.h"
 #include "ui/panel/panel.h"
+#include "state/controller.h"
 #include "clock.h"
 #include "typio/runtime/instance.h"
 #include "typio/runtime/registry.h"
@@ -105,6 +106,12 @@ static void mode_cache_update(TypioWlFrontend *frontend,
     }
 }
 
+/* Language-first indicator label (ADR-0031): "<Badge> · <Engine> · <Mode>".
+ * The language is the reliable identity, shown as a compact glyph badge (中 / あ
+ * / الد / EN) since it is always present — even for layout-only languages with
+ * no engine. The engine segment is dropped for layout-only languages (empty
+ * keyboard slot, e.g. Darija), and the mode segment when the engine exposes
+ * none. */
 static bool build_indicator_label(TypioWlFrontend *frontend,
                                   const TypioKeyboardEngineMode *mode,
                                   char *label,
@@ -112,45 +119,64 @@ static bool build_indicator_label(TypioWlFrontend *frontend,
     TypioRegistry *registry;
     char *engine_name;
     char *display;
+    char *lang_tag;
 
     if (!frontend || !frontend->instance || !label || label_size == 0) {
         return false;
     }
 
     registry = typio_instance_get_registry(frontend->instance);
+    lang_tag = registry ? typio_registry_get_active_language(registry) : nullptr;
     engine_name = registry ? typio_registry_get_active_keyboard(registry) : nullptr;
     display = (engine_name && registry)
         ? typio_registry_get_engine_display_name(registry, engine_name) : nullptr;
 
+    char badge[32];
+    typio_language_badge(lang_tag, badge, sizeof(badge));
+    const char *lang = badge[0] ? badge : nullptr;
     const char *eng = (display && display[0]) ? display
                      : (engine_name && engine_name[0]) ? engine_name : nullptr;
 
-    if (!eng || !eng[0]) {
+    /* Nothing to show: no active language and no active keyboard engine. */
+    if (!lang && !eng) {
+        typio_free_string(lang_tag);
         typio_free_string(display);
         typio_free_string(engine_name);
         return false;
     }
 
-    if (mode) {
+    if (mode && engine_name) {
         mode_cache_update(frontend, engine_name, mode);
     }
 
     const char *suffix = nullptr;
-    if (mode && mode->display_label && mode->display_label[0]) {
-        suffix = mode->display_label;
-    } else if (engine_name) {
-        suffix = mode_cache_lookup(frontend, engine_name);
+    if (eng) {
+        if (mode && mode->display_label && mode->display_label[0]) {
+            suffix = mode->display_label;
+        } else if (engine_name) {
+            suffix = mode_cache_lookup(frontend, engine_name);
+        }
     }
 
-    if (suffix) {
-        snprintf(label, label_size, "%s · %s", eng, suffix);
-    } else {
-        snprintf(label, label_size, "%s", eng);
+    size_t n = 0;
+    if (lang && n < label_size) {
+        int w = snprintf(label + n, label_size - n, "%s", lang);
+        if (w > 0) n += (size_t)w;
+    }
+    if (eng && n < label_size) {
+        int w = snprintf(label + n, label_size - n, "%s%s",
+                         n > 0 ? " · " : "", eng);
+        if (w > 0) n += (size_t)w;
+        if (suffix && n < label_size) {
+            w = snprintf(label + n, label_size - n, " · %s", suffix);
+            if (w > 0) n += (size_t)w;
+        }
     }
 
+    typio_free_string(lang_tag);
     typio_free_string(display);
     typio_free_string(engine_name);
-    return true;
+    return n > 0;
 }
 
 void typio_wl_frontend_show_indicator_for_state(TypioWlFrontend *frontend,

@@ -52,6 +52,7 @@ Decisions about the framework core (engine ABI, composition contract) live in th
 | [ADR-0029](0029-engine-package-install-layout.md) | Engine Package Install Layout | Accepted (terminology amended by ADR-0030) |
 | [ADR-0030](0030-engine-process-manifests.md) | Engine process manifests and Typio Engine Protocol | Accepted (manifest keys extended by ADR-0031) |
 | [ADR-0031](0031-language-first-switching-surface.md) | Language-first switching surface (`language.*`, `languages` manifest key) | Accepted (amends ADR-0008/0026 surface; TIP v3) |
+| [ADR-0032](0032-tray-icon-composition.md) | Tray icon composition — language base + modality overlays | Accepted (extends ADR-0031 icon chain) |
 
 ## Looking for something else?
 

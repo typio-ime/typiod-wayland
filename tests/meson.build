@@ -152,6 +152,22 @@ test_candidate_guard = executable('test_candidate_guard',
 )
 test('candidate_guard', test_candidate_guard)
 
+# ── Tray ──────────────────────────────────────────────────────────────────
+# The language-badge rasteriser needs FreeType + HarfBuzz + Fontconfig. Resolve
+# them locally (test scope does not see src/'s deps) and only register the test
+# when present, so a minimal toolchain still builds the rest of the suite.
+badge_ft = dependency('freetype2', required: false)
+badge_hb = dependency('harfbuzz', required: false)
+badge_fc = dependency('fontconfig', required: false)
+if badge_ft.found() and badge_hb.found() and badge_fc.found()
+    test_icon_badge = executable('test_icon_badge',
+        ['tray/test_icon_badge.c', '../src/tray/icon_badge.c'],
+        include_directories: [wayland_test_inc, top_inc],
+        dependencies: [libtypio_dep, badge_ft, badge_hb, badge_fc],
+    )
+    test('icon_badge', test_icon_badge)
+endif
+
 # ── Fuzzers ─────────────────────────────────────────────────────────────────
 # Not run by `meson test`; build with -Denable_fuzzers=true and run the
 # binaries directly (see docs/dev/testing.md).

@@ -297,10 +297,18 @@ void typio_tray_destroy(TypioTray *tray) {
     free(tray->icon_name);
     free(tray->icon_theme_path);
     free(tray->attention_icon_name);
+    free(tray->overlay_icon_name);
     free(tray->tooltip_title);
     free(tray->tooltip_description);
     free(tray->title);
     free(tray->engine_name);
+
+    /* Release rendered badge bitmaps + cached text (ADR-0032). */
+    for (size_t i = 0; i < tray->badge_pixmap_count; i++) {
+        typio_badge_pixmap_free(&tray->badge_pixmaps[i]);
+    }
+    free(tray->badge_text);
+    typio_icon_badge_shutdown();
 
     typio_log_info("System tray destroyed");
     free(tray);
@@ -352,11 +360,26 @@ static void tray_refresh_tooltip(TypioTray *tray, TypioStateController *ctrl) {
                           ? mode->label : nullptr;
     char desc[256];
 
+    /* Language-first tooltip (ADR-0031): the active language leads, then the
+     * engines it resolved to. A layout-only language (e.g. Darija) shows the
+     * language with an empty keyboard slot. */
+    const char *lang_label =
+        typio_language_endonym(typio_state_controller_get_active_language(ctrl));
+    char lang_line[96];
+    if (lang_label) {
+        snprintf(lang_line, sizeof(lang_line), "Language: %s\n", lang_label);
+    } else {
+        lang_line[0] = '\0';
+    }
+
     if (!kb || !*kb) {
         kb = typio_state_controller_get_active_engine_name(ctrl);
     }
     if (!kb || !*kb) {
-        kb = "Unavailable";
+        /* Distinguish a deliberately empty (layout-only) slot from a genuinely
+         * unavailable engine: when a language is active, the empty slot is by
+         * design — keys pass through to the system layout. */
+        kb = lang_label ? "— (layout-only)" : "Unavailable";
     }
     if (!voice || !*voice) {
         voice = typio_state_controller_get_active_voice_engine_name(ctrl);
@@ -366,12 +389,33 @@ static void tray_refresh_tooltip(TypioTray *tray, TypioStateController *ctrl) {
     }
 
     if (profile) {
-        snprintf(desc, sizeof(desc), "Keyboard: %s (%s)\nVoice: %s",
-                 kb, profile, voice);
+        snprintf(desc, sizeof(desc), "%sKeyboard: %s (%s)\nVoice: %s",
+                 lang_line, kb, profile, voice);
     } else {
-        snprintf(desc, sizeof(desc), "Keyboard: %s\nVoice: %s", kb, voice);
+        snprintf(desc, sizeof(desc), "%sKeyboard: %s\nVoice: %s",
+                 lang_line, kb, voice);
     }
     typio_tray_set_tooltip(tray, "Typio", desc);
+}
+
+/* Apply the resolved base icon: a rendered language badge when the icon falls
+ * to the language floor (ADR-0032), otherwise the named icon. */
+static void tray_apply_icon(TypioTray *tray, TypioStateController *ctrl) {
+    if (typio_state_controller_get_status_icon_is_badge(ctrl)) {
+        typio_tray_set_badge(
+            tray, typio_state_controller_get_status_badge_text(ctrl));
+    } else {
+        typio_tray_set_icon(tray, typio_state_controller_get_status_icon(ctrl));
+    }
+}
+
+/* Apply the voice-slot overlay: presence only (ADR-0032), a stock microphone
+ * glyph when a voice engine is active. Brand identity stays in the menu. */
+static void tray_apply_overlay(TypioTray *tray, TypioStateController *ctrl) {
+    const char *voice =
+        typio_state_controller_get_active_voice_engine_name(ctrl);
+    typio_tray_set_overlay_icon(
+        tray, voice ? "audio-input-microphone-symbolic" : nullptr);
 }
 
 static void tray_state_change_callback(void *user_data,
@@ -388,16 +432,21 @@ static void tray_state_change_callback(void *user_data,
         case TYPIO_STATE_CHANGE_STATUS_ICON: {
             const char *engine_name =
                 typio_state_controller_get_active_engine_name(ctrl);
-            const char *icon_name =
-                typio_state_controller_get_status_icon(ctrl);
+            /* A layout-only language (empty keyboard slot, e.g. Darija) is a
+             * legitimate active state: keys pass through to the system layout.
+             * Treat "a language is active" as active so the tray does not show
+             * the off/passive icon for it (ADR-0031). */
             bool is_active =
-                typio_state_controller_get_engine_active(ctrl);
-            typio_tray_set_icon(tray, icon_name);
+                typio_state_controller_get_engine_active(ctrl) ||
+                typio_state_controller_get_active_language(ctrl) != nullptr;
+            tray_apply_icon(tray, ctrl);
+            tray_apply_overlay(tray, ctrl);
             typio_tray_update_engine(tray, engine_name, is_active);
             tray_refresh_tooltip(tray, ctrl);
             break;
         }
         case TYPIO_STATE_CHANGE_LANGUAGE:
+            tray_apply_icon(tray, ctrl);
             tray_refresh_tooltip(tray, ctrl);
             break;
         case TYPIO_STATE_CHANGE_STATUS: {

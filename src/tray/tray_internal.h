@@ -7,10 +7,14 @@
 #define TYPIO_TRAY_INTERNAL_H
 
 #include "tray.h"
+#include "icon_badge.h"
 
 #ifdef HAVE_LIBSYSTEMD
 #  include <systemd/sd-bus.h>
 #endif
+
+/* Pixmap sizes rendered for a language badge (22px + 44px for HiDPI). */
+#define TYPIO_TRAY_BADGE_SIZES 2
 
 typedef struct TypioStateController TypioStateController;
 
@@ -64,9 +68,16 @@ struct TypioTray {
     char *icon_name;
     char *icon_theme_path;
     char *attention_icon_name;
+    char *overlay_icon_name;        /* corner overlay: voice presence (ADR-0032) */
     char *tooltip_title;
     char *tooltip_description;
     char *title;
+
+    /* Language text badge (ADR-0032). When badge_pixmap_count > 0 the IconPixmap
+     * channel carries these rendered bitmaps and IconName is suppressed. */
+    char            *badge_text;
+    TypioBadgePixmap badge_pixmaps[TYPIO_TRAY_BADGE_SIZES];
+    size_t           badge_pixmap_count;
 
     /* Current engine info */
     char *engine_name;
