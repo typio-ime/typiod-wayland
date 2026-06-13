@@ -109,6 +109,29 @@ static char *build_engine_changed_payload(TypioInstance *inst)
     return tip_json_builder_steal(b);
 }
 
+static char *build_language_changed_payload(TypioInstance *inst)
+{
+    TypioRegistry *reg = inst ? typio_instance_get_registry(inst) : NULL;
+    char *active_lang = reg ? typio_registry_get_active_language(reg) : NULL;
+    char *active_kb = reg ? typio_registry_get_active_keyboard(reg) : NULL;
+    char *active_voice = reg ? typio_registry_get_active_voice(reg) : NULL;
+    TipJsonBuilder *b = tip_json_builder_new();
+    TIP_JSON_OBJ_START(b);
+    TIP_JSON_KEY(b, "activeLanguage");
+    tip_json_builder_append_string(b, active_lang ? active_lang : "");
+    TIP_JSON_COMMA(b);
+    TIP_JSON_KEY(b, "activeKeyboardEngine");
+    tip_json_builder_append_string(b, active_kb ? active_kb : "");
+    TIP_JSON_COMMA(b);
+    TIP_JSON_KEY(b, "activeVoiceEngine");
+    tip_json_builder_append_string(b, active_voice ? active_voice : "");
+    TIP_JSON_OBJ_END(b);
+    typio_free_string(active_lang);
+    typio_free_string(active_kb);
+    typio_free_string(active_voice);
+    return tip_json_builder_steal(b);
+}
+
 static char *build_status_changed_payload(TypioStateController *ctrl)
 {
     const TypioKeyboardEngineMode *mode = ctrl
@@ -154,6 +177,12 @@ static void ipc_bus_state_listener(void *user_data,
     case TYPIO_STATE_CHANGE_VOICE_ENGINE: {
         char *payload = build_engine_changed_payload(bus->instance);
         typio_uds_server_emit(bus->uds, TYPIO_IPC_TOPIC_ENGINE_CHANGED, payload);
+        free(payload);
+        break;
+    }
+    case TYPIO_STATE_CHANGE_LANGUAGE: {
+        char *payload = build_language_changed_payload(bus->instance);
+        typio_uds_server_emit(bus->uds, TYPIO_IPC_TOPIC_LANGUAGE_CHANGED, payload);
         free(payload);
         break;
     }

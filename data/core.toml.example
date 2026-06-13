@@ -13,6 +13,24 @@
 #
 # For the full reference of every key, see docs/reference/configuration.md.
 
+# ── Languages (the user-facing switch unit, ADR-0031) ───────────────
+# Ctrl+Shift cycles this list in order. Each language resolves to one
+# keyboard engine and one voice engine; a language no keyboard engine
+# declares is layout-only — keys pass through with the system layout.
+# When [languages] is absent, the cycle is every engine-declared
+# language; when no engine declares languages, Ctrl+Shift falls back to
+# keyboard-engine cycling.
+
+# [languages]
+# enabled = ["zh-Hans", "en", "ar-MA"]
+#
+# [languages.zh-Hans]
+# keyboard = "rime"
+# voice    = "whisper"
+#
+# [languages.ar-MA]
+# keyboard = "none"      # layout-only: raw passthrough
+
 [keyboard]
 # Remember and restore the keyboard engine and engine mode per application.
 # per_app_preferences = true
@@ -92,6 +110,7 @@
 # or Super+v.
 
 [shortcuts]
-# switch_keyboard_engine = "Ctrl+Shift"
+# switch_language = "Ctrl+Shift"
+# switch_keyboard_engine = ""        # unbound by default (ADR-0031)
 # exit = "Ctrl+Shift+Escape"
 # voice_ptt = "Super+v"

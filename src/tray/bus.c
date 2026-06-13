@@ -397,6 +397,9 @@ static void tray_state_change_callback(void *user_data,
             tray_refresh_tooltip(tray, ctrl);
             break;
         }
+        case TYPIO_STATE_CHANGE_LANGUAGE:
+            tray_refresh_tooltip(tray, ctrl);
+            break;
         case TYPIO_STATE_CHANGE_STATUS: {
             const TypioKeyboardEngineMode *mode =
                 typio_state_controller_get_current_status(ctrl);

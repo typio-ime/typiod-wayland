@@ -133,6 +133,13 @@ TypioResult typio_registry_next_keyboard(
     return TYPIO_OK;
 }
 
+/* The arbiter tries language switching first (ADR-0031). Report "no
+ * languages" so the fallback exercises the keyboard-cycling path above. */
+TypioResult typio_registry_next_language(
+    [[maybe_unused]] TypioRegistry *registry) {
+    return TYPIO_ERROR_NOT_FOUND;
+}
+
 /* Composition / preedit teardown stubs hit by arbiter_consume before the
  * engine switch. The arbiter only needs them to return cleanly. */
 void typio_wl_set_preedit([[maybe_unused]] TypioWlFrontend *frontend,
@@ -177,9 +184,9 @@ static void setup(void) {
     memset(&test_session, 0, sizeof(test_session));
     test_frontend.tracker = calloc(1, sizeof(TypioWlKeyTracker));
     test_keyboard.frontend = &test_frontend;
-    /* Default engine-switch chord is Ctrl+Shift (modifier-only). Set it
+    /* Default language-switch chord is Ctrl+Shift (modifier-only). Set it
      * directly so the test stays independent of the config loader. */
-    test_frontend.shortcuts.switch_engine = (TypioShortcutBinding){
+    test_frontend.shortcuts.switch_language = (TypioShortcutBinding){
         .modifiers = TYPIO_MOD_CTRL | TYPIO_MOD_SHIFT,
         .keysym = 0,
     };

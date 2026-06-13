@@ -457,28 +457,29 @@ static void typio_tray_menu_callback([[maybe_unused]] TypioTray *tray,
         return;
     }
 
-    if (strcmp(action, "activate") == 0) {
-        TypioResult result = typio_registry_next_keyboard(registry);
+    /* Tray activate/scroll cycle languages, mirroring the Ctrl+Shift chord;
+     * installs without language metadata fall back to keyboard-engine
+     * cycling (ADR-0031). */
+    if (strcmp(action, "activate") == 0 || strcmp(action, "scroll_down") == 0) {
+        TypioResult result = typio_registry_next_language(registry);
+        if (result == TYPIO_ERROR_NOT_FOUND) {
+            result = typio_registry_next_keyboard(registry);
+        }
         if (result == TYPIO_OK) {
-            typio_log_info("Switched to next engine");
+            typio_log_info("Switched to next language");
         } else {
-            typio_log_error("Failed to switch to next engine: error %d", result);
+            typio_log_error("Failed to switch to next language: error %d", result);
         }
         return;
     }
 
     if (strcmp(action, "scroll_up") == 0) {
-        TypioResult result = typio_registry_prev_keyboard(registry);
-        if (result != TYPIO_OK) {
-            typio_log_error("Failed to switch to previous engine: error %d", result);
+        TypioResult result = typio_registry_prev_language(registry);
+        if (result == TYPIO_ERROR_NOT_FOUND) {
+            result = typio_registry_prev_keyboard(registry);
         }
-        return;
-    }
-
-    if (strcmp(action, "scroll_down") == 0) {
-        TypioResult result = typio_registry_next_keyboard(registry);
         if (result != TYPIO_OK) {
-            typio_log_error("Failed to switch to next engine (scroll): error %d", result);
+            typio_log_error("Failed to switch to previous language: error %d", result);
         }
         return;
     }

@@ -19,8 +19,10 @@ extern "C" {
 
 /* ---------- Protocol version reported by hello ----------
  * v2: engine.use / engine.next replaced by modality-explicit keyboard.* /
- *     voice.* verbs (ADR-0026). */
-#define TYPIO_IPC_PROTOCOL_VERSION 2
+ *     voice.* verbs (ADR-0026).
+ * v3: language.* namespace, daemon.status activeLanguage, language.changed
+ *     event (ADR-0031). */
+#define TYPIO_IPC_PROTOCOL_VERSION 3
 
 /**
  * @brief Return the canonical UDS socket path.
@@ -59,6 +61,14 @@ char *typio_ipc_socket_path(void);
 #define TYPIO_IPC_METHOD_VOICE_NEXT       "voice.next"
 #define TYPIO_IPC_METHOD_VOICE_PREV       "voice.prev"
 
+/* Language-first switching (ADR-0031). The active language retargets the
+ * keyboard and voice slots together; per-language engine selection is plain
+ * config (languages.<tag>.keyboard / .voice). */
+#define TYPIO_IPC_METHOD_LANGUAGE_LIST    "language.list"
+#define TYPIO_IPC_METHOD_LANGUAGE_USE     "language.use"
+#define TYPIO_IPC_METHOD_LANGUAGE_NEXT    "language.next"
+#define TYPIO_IPC_METHOD_LANGUAGE_PREV    "language.prev"
+
 #define TYPIO_IPC_METHOD_DAEMON_STATUS    "daemon.status"
 #define TYPIO_IPC_METHOD_DAEMON_STOP      "daemon.stop"
 #define TYPIO_IPC_METHOD_DAEMON_VERSION   "daemon.version"
@@ -67,6 +77,7 @@ char *typio_ipc_socket_path(void);
 
 /* ---------- Event topics (server -> client notification.method) ---------- */
 #define TYPIO_IPC_TOPIC_ENGINE_CHANGED      "engine.changed"
+#define TYPIO_IPC_TOPIC_LANGUAGE_CHANGED    "language.changed"
 #define TYPIO_IPC_TOPIC_ENGINE_STATUS_CHANGED "engine.statusChanged"
 #define TYPIO_IPC_TOPIC_CONFIG_CHANGED      "config.changed"
 #define TYPIO_IPC_TOPIC_RUNTIME_CHANGED     "runtime.changed"

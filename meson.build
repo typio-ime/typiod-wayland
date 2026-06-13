@@ -2,7 +2,7 @@
 # (e.g. Ubuntu 24.04 LTS) does not know the 'c23' value. Switch to 'c23'
 # when the supported meson floor reaches 1.4.
 project('typio-linux', 'c',
-  version: '0.2.0',
+  version: '0.3.0',
   default_options: ['warning_level=2', 'c_std=c2x'],
   meson_version: '>=1.0.0',
 )
@@ -48,10 +48,11 @@ m_dep = cc.find_library('m', required: false)
 #      on a system install.  See docs/dev/setup.md.
 #   2. meson subproject — fall back to `subprojects/libtypio.wrap`, which
 #      clones libtypio and builds it via cargo.
-# Version floor: 0.3.0 is the first release with the fd-3 Typio Engine
-# Protocol and the typio_registry_register_engine_process API.
+# Version floor: 0.4.0 is the first release with the language-first
+# registry API (typio_registry_set_engine_languages and the
+# language activation/cycling calls, ADR-0031).
 libtypio_dep = dependency('libtypio',
-    version: '>= 0.3.0',
+    version: '>= 0.4.0',
     fallback: ['libtypio', 'libtypio_dep'],
     required: true,
 )

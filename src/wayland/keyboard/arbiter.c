@@ -122,13 +122,18 @@ static void arbiter_consume(TypioKeyArbiter *arbiter,
     }
 
     if (registry) {
-        TypioResult result = typio_registry_next_keyboard(registry);
+        TypioResult result = typio_registry_next_language(registry);
+        if (result == TYPIO_ERROR_NOT_FOUND) {
+            /* No languages enabled or declared (ADR-0031): fall back to
+             * keyboard-engine cycling so unannotated installs keep working. */
+            result = typio_registry_next_keyboard(registry);
+        }
         if (result == TYPIO_OK) {
             typio_wl_trace(frontend, "key",
-                           "stage=shortcut-switch detail=ctrl+shift engine switch (arbiter)");
-            typio_log_info("Switched engine via Ctrl+Shift chord (arbiter)");
+                           "stage=shortcut-switch detail=ctrl+shift language switch (arbiter)");
+            typio_log_info("Switched language via Ctrl+Shift chord (arbiter)");
         } else {
-            typio_log_error("Failed to switch engine via Ctrl+Shift chord (arbiter): error %d", result);
+            typio_log_error("Failed to switch language via Ctrl+Shift chord (arbiter): error %d", result);
         }
     }
 
@@ -206,7 +211,7 @@ void typio_wl_key_arbiter_press(TypioKeyArbiter *arbiter,
                                 uint32_t modifiers, uint32_t unicode,
                                 uint32_t time) {
     uint32_t phys = keyboard->physical_modifiers;
-    const TypioShortcutBinding *bind = &keyboard->frontend->shortcuts.switch_engine;
+    const TypioShortcutBinding *bind = &keyboard->frontend->shortcuts.switch_language;
 
     switch (arbiter->state) {
     case TYPIO_ARBITER_IDLE:
@@ -247,7 +252,7 @@ void typio_wl_key_arbiter_release(TypioKeyArbiter *arbiter,
                                   uint32_t modifiers, uint32_t unicode,
                                   uint32_t time) {
     uint32_t phys = keyboard->physical_modifiers;
-    const TypioShortcutBinding *bind = &keyboard->frontend->shortcuts.switch_engine;
+    const TypioShortcutBinding *bind = &keyboard->frontend->shortcuts.switch_language;
 
     switch (arbiter->state) {
     case TYPIO_ARBITER_IDLE:

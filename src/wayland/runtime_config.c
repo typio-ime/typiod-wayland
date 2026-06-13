@@ -25,7 +25,7 @@
 
 void typio_wl_frontend_log_shortcuts(TypioWlFrontend *frontend,
                                      const char *prefix) {
-    char *switch_engine;
+    char *switch_language;
     char *emergency_exit;
     char *voice_ptt;
 
@@ -33,15 +33,15 @@ void typio_wl_frontend_log_shortcuts(TypioWlFrontend *frontend,
         return;
     }
 
-    switch_engine = typio_shortcut_format(&frontend->shortcuts.switch_engine);
+    switch_language = typio_shortcut_format(&frontend->shortcuts.switch_language);
     emergency_exit = typio_shortcut_format(&frontend->shortcuts.emergency_exit);
     voice_ptt = typio_shortcut_format(&frontend->shortcuts.voice_ptt);
-    typio_log_info("%s switch_engine=%s exit=%s voice_ptt=%s",
+    typio_log_info("%s switch_language=%s exit=%s voice_ptt=%s",
                    prefix,
-                   switch_engine ? switch_engine : "(none)",
+                   switch_language ? switch_language : "(none)",
                    emergency_exit ? emergency_exit : "(none)",
                    voice_ptt ? voice_ptt : "(none)");
-    typio_free_string(switch_engine);
+    typio_free_string(switch_language);
     typio_free_string(emergency_exit);
     typio_free_string(voice_ptt);
 }

@@ -24,6 +24,7 @@ typedef struct {
     char *author;
     char *icon;
     char *language;
+    char **languages;
     char *type;
     char *protocol;
     char *command;
@@ -128,6 +129,7 @@ static void manifest_free(TypioEngineManifest *m) {
     free(m->author);
     free(m->icon);
     free(m->language);
+    string_array_free(m->languages);
     free(m->type);
     free(m->protocol);
     free(m->command);
@@ -211,6 +213,9 @@ static bool manifest_parse(const char *path, TypioEngineManifest *m) {
             if (!manifest_set(&m->icon, value)) goto oom;
         } else if (strcmp(key, "language") == 0) {
             if (!manifest_set(&m->language, value)) goto oom;
+        } else if (strcmp(key, "languages") == 0) {
+            string_array_free(m->languages);
+            m->languages = split_list(value);
         } else if (strcmp(key, "type") == 0) {
             if (!manifest_set(&m->type, value)) goto oom;
         } else if (strcmp(key, "protocol") == 0) {
@@ -419,13 +424,19 @@ static bool typio_register_one(TypioRegistry *registry, const char *path) {
         goto out;
     }
 
+    /* `languages` (ordered, primary first) wins over the legacy single
+     * `language` key when both are present (ADR-0031). */
+    const char *primary_language = (m.languages && m.languages[0])
+        ? m.languages[0]
+        : (m.language ? m.language : "und");
+
     TypioEngineInfo info = {
         .name = m.name,
         .display_name = m.display_name ? m.display_name : m.name,
         .description = m.description ? m.description : "",
         .author = m.author ? m.author : "",
         .icon = m.icon,
-        .language = m.language ? m.language : "und",
+        .language = primary_language,
         .type = type,
         .required_capabilities = (const char *const *)m.required_caps,
         .optional_capabilities = (const char *const *)m.optional_caps,
@@ -455,6 +466,15 @@ static bool typio_register_one(TypioRegistry *registry, const char *path) {
         typio_log_debug("Engine manifest %s not registered (result %d)",
                         path, result);
         goto out;
+    }
+    if (m.languages && m.languages[0]) {
+        TypioResult lang_result = typio_registry_set_engine_languages(
+            registry, info.name, (const char *const *)m.languages);
+        if (lang_result != TYPIO_OK) {
+            typio_log_warning(
+                "Engine %s: failed to register manifest languages (result %d)",
+                info.name, lang_result);
+        }
     }
     typio_log_info("Registered engine process %s from %s", info.name, path);
     ok = true;

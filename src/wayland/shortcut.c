@@ -26,7 +26,7 @@ void typio_shortcut_config_load(TypioShortcutConfig *out,
     if (!out)
         return;
 
-    load_one(&out->switch_engine,   config, "switch_keyboard_engine");
+    load_one(&out->switch_language, config, "switch_language");
     load_one(&out->emergency_exit,  config, "exit");
     load_one(&out->voice_ptt,       config, "voice_ptt");
 }

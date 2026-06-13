@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Language-first switching**
+  ([ADR-0031](docs/adr/0031-language-first-switching-surface.md), requires
+  libtypio >= 0.4). Ctrl+Shift now cycles the enabled language list and
+  retargets the keyboard and voice slots together; installs without language
+  metadata fall back to keyboard-engine cycling. Engine manifests gain a
+  `languages` array key. TIP bumps to protocol v3 with the
+  `language.{list,use,next,prev}` methods, `daemon.status.activeLanguage`,
+  and the `language.changed` event. Languages with no keyboard engine are
+  layout-only: keys pass through raw (e.g. Moroccan Darija on an Arabic
+  layout).
 - `CONTRIBUTING.md`, `SECURITY.md`, an interface stability reference
   (`docs/reference/stability.md`), and a security-model explanation
   (`docs/explanation/security-model.md`).
@@ -26,8 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The build now requires libtypio >= 0.3.0 (pkg-config version floor in
-  `meson.build`).
+- The build now requires libtypio >= 0.4.0 (pkg-config version floor in
+  `meson.build`; the wrap and CI pin follow), the first release with the
+  language-first registry API.
 - CI builds against a pinned libtypio release tag and adds two jobs: an
   ASan/UBSan test run and a non-blocking canary against libtypio `main`.
   The primary job builds with `-Dwerror=true`.

@@ -33,6 +33,39 @@ custom path, use the `-c` / `--config` command-line flag.
 |-----|------|---------|-------------|
 | `per_app_preferences` | bool | `true` | Remember and restore the keyboard engine and engine mode per application. |
 
+### `[languages]` — language-first switching
+
+Parsed by libtypio (ADR-0018 / [ADR-0031](../adr/0031-language-first-switching-surface.md)).
+The **language** (a BCP-47 tag) is the user-facing switch unit: activating a
+language retargets the keyboard and voice engine slots together.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `enabled` | array (or comma-separated string) | every engine-declared language | Ordered cycle for the `switch_language` chord. May include tags no engine declares (layout-only languages). |
+
+Per-language engine selection lives in `[languages.<tag>]` tables:
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `keyboard` | string | first keyboard engine declaring `<tag>` | Keyboard engine for the language. `"none"` forces an empty slot: keys pass through raw with the system layout (layout-only languages such as Moroccan Darija). |
+| `voice` | string | first voice engine declaring `<tag>` | Voice engine for the language. `"none"` forces an empty slot. |
+
+```toml
+[languages]
+enabled = ["zh-Hans", "en", "ar-MA"]
+
+[languages.zh-Hans]
+keyboard = "rime"
+voice    = "whisper"
+
+[languages.ar-MA]
+keyboard = "none"     # layout-only: raw passthrough
+```
+
+At startup the daemon restores the persisted active language; the legacy
+`keyboard.engine` / `voice.engine` chain below applies only when no languages
+are enabled or declared.
+
 ### `[shortcuts]` — global shortcuts
 
 Parsed by libtypio.  All values are shortcut strings such as `Ctrl+Shift` or
@@ -40,7 +73,8 @@ Parsed by libtypio.  All values are shortcut strings such as `Ctrl+Shift` or
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `switch_keyboard_engine` | `Ctrl+Shift` | Cycle to the next keyboard engine. |
+| `switch_language` | `Ctrl+Shift` | Cycle the enabled language list (falls back to keyboard-engine cycling when no languages exist). |
+| `switch_keyboard_engine` | *(unbound)* | Cycle to the next keyboard engine. |
 | `exit` | `Ctrl+Shift+Escape` | Emergency shutdown of the daemon. |
 | `voice_ptt` | `Super+v` | Push-to-talk for voice input. |
 
@@ -93,7 +127,9 @@ For authoritative schema and defaults, consult the individual engine repository.
 
 ### Engine selection (keyboard and voice)
 
-Both keyboard and voice engines follow the same activation priority:
+These keys are the legacy per-modality chain; they apply only when no
+languages are enabled or declared (see `[languages]` above). Both keyboard
+and voice engines follow the same activation priority:
 
 1. **Config override** — `keyboard.engine` / `voice.engine` in `core.toml`
 2. **State persistence** — last-used engine resumed from `engine-state.toml`

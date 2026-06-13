@@ -5,7 +5,9 @@
  * Resource-oriented JSON-RPC handlers:
  *   - hello
  *   - config.{get,set,unset,list,show,reload}
- *   - engine.{list,describe,use,next,invoke}
+ *   - engine.{list,describe,invoke,load,unload,reload}
+ *   - keyboard.{use,next,prev} / voice.{use,next,prev}
+ *   - language.{list,use,next,prev} (ADR-0031)
  *   - daemon.{status,stop,version}
  *   - events.subscribe (delegated to transport via callback)
  *
@@ -110,6 +112,8 @@ static char *handle_hello([[maybe_unused]] TypioStatusService *svc,
     tip_json_builder_append_string(b, "keyboard");
     TIP_JSON_COMMA(b);
     tip_json_builder_append_string(b, "voice");
+    TIP_JSON_COMMA(b);
+    tip_json_builder_append_string(b, "language");
     TIP_JSON_COMMA(b);
     tip_json_builder_append_string(b, "daemon");
     TIP_JSON_COMMA(b);
@@ -612,6 +616,99 @@ static char *handle_modal_cycle(TypioStatusService *svc, int id,
     return response;
 }
 
+/* ------------------------------------------------------------------ */
+/*  language.* (ADR-0031)                                             */
+/* ------------------------------------------------------------------ */
+
+static char *build_active_language_response(TypioRegistry *reg, int id)
+{
+    char *active = typio_registry_get_active_language(reg);
+    TipJsonBuilder *b = tip_json_builder_new();
+    TIP_JSON_OBJ_START(b);
+    TIP_JSON_KEY(b, "active");
+    tip_json_builder_append_string(b, active ? active : "");
+    TIP_JSON_OBJ_END(b);
+    typio_free_string(active);
+    char *payload = tip_json_builder_steal(b);
+    char *response = tip_json_build_response(id, payload);
+    free(payload);
+    return response;
+}
+
+static char *handle_language_list(TypioStatusService *svc, int id)
+{
+    TypioRegistry *reg = svc_registry(svc);
+    if (!reg) return tip_json_build_error(id, RPC_INTERNAL_ERROR, "no registry");
+
+    size_t count = 0;
+    char **tags = typio_registry_list_languages(reg, &count);
+    char *active = typio_registry_get_active_language(reg);
+
+    TipJsonBuilder *b = tip_json_builder_new();
+    TIP_JSON_OBJ_START(b);
+    TIP_JSON_KEY(b, "languages");
+    TIP_JSON_ARR_START(b);
+    for (size_t i = 0; i < count; i++) {
+        if (i > 0) TIP_JSON_COMMA(b);
+        TIP_JSON_OBJ_START(b);
+        TIP_JSON_KEY(b, "tag");
+        tip_json_builder_append_string(b, tags[i] ? tags[i] : "");
+        TIP_JSON_COMMA(b);
+        TIP_JSON_KEY(b, "active");
+        tip_json_builder_append_bool(b,
+            active && tags[i] && strcmp(active, tags[i]) == 0);
+        TIP_JSON_OBJ_END(b);
+    }
+    TIP_JSON_ARR_END(b);
+    TIP_JSON_COMMA(b);
+    TIP_JSON_KEY(b, "active");
+    tip_json_builder_append_string(b, active ? active : "");
+    TIP_JSON_OBJ_END(b);
+
+    typio_free_string_array(tags, count);
+    typio_free_string(active);
+    char *payload = tip_json_builder_steal(b);
+    char *response = tip_json_build_response(id, payload);
+    free(payload);
+    return response;
+}
+
+static char *handle_language_use(TypioStatusService *svc, const char *params, int id)
+{
+    char *tag = tip_json_extract_string(params, "tag");
+    if (!tag || !*tag) {
+        free(tag);
+        return tip_json_build_error(id, RPC_INVALID_PARAMS, "Missing 'tag' param");
+    }
+    TypioRegistry *reg = svc_registry(svc);
+    if (!reg) {
+        free(tag);
+        return tip_json_build_error(id, RPC_INTERNAL_ERROR, "no registry");
+    }
+    TypioResult r = typio_registry_set_active_language(reg, tag);
+    free(tag);
+    if (r != TYPIO_OK)
+        return tip_json_build_error(id, RPC_INTERNAL_ERROR, "language.use failed");
+    if (svc && svc->instance)
+        typio_instance_save_config(svc->instance);
+    return tip_json_build_response(id, "{}");
+}
+
+static char *handle_language_cycle(TypioStatusService *svc, int id, bool forward)
+{
+    TypioRegistry *reg = svc_registry(svc);
+    if (!reg) return tip_json_build_error(id, RPC_INTERNAL_ERROR, "no registry");
+
+    TypioResult r = forward ? typio_registry_next_language(reg)
+                            : typio_registry_prev_language(reg);
+    if (r == TYPIO_ERROR_NOT_FOUND)
+        return tip_json_build_error(id, RPC_INVALID_PARAMS,
+                                    "No languages enabled or declared");
+    if (r != TYPIO_OK)
+        return tip_json_build_error(id, RPC_INTERNAL_ERROR, "language cycle failed");
+    return build_active_language_response(reg, id);
+}
+
 static char *handle_engine_invoke(TypioStatusService *svc, const char *params, int id)
 {
     char *name = tip_json_extract_string(params, "name");
@@ -805,6 +902,13 @@ static char *handle_daemon_status(TypioStatusService *svc,
     TIP_JSON_COMMA(b);
     TIP_JSON_KEY(b, "activeVoiceEngine");
     tip_json_builder_append_string(b, active_voice ? active_voice : "");
+    TIP_JSON_COMMA(b);
+    TIP_JSON_KEY(b, "activeLanguage");
+    {
+        char *active_lang = reg ? typio_registry_get_active_language(reg) : nullptr;
+        tip_json_builder_append_string(b, active_lang ? active_lang : "");
+        typio_free_string(active_lang);
+    }
 
     if (svc && svc->runtime_state_callback) {
         TypioStatusRuntimeState state = {0};
@@ -910,6 +1014,14 @@ char *typio_status_service_handle(TypioStatusService *svc,
         return handle_modal_cycle(svc, id, true, true);
     if (strcmp(method, TYPIO_IPC_METHOD_VOICE_PREV) == 0)
         return handle_modal_cycle(svc, id, true, false);
+    if (strcmp(method, TYPIO_IPC_METHOD_LANGUAGE_LIST) == 0)
+        return handle_language_list(svc, id);
+    if (strcmp(method, TYPIO_IPC_METHOD_LANGUAGE_USE) == 0)
+        return handle_language_use(svc, params, id);
+    if (strcmp(method, TYPIO_IPC_METHOD_LANGUAGE_NEXT) == 0)
+        return handle_language_cycle(svc, id, true);
+    if (strcmp(method, TYPIO_IPC_METHOD_LANGUAGE_PREV) == 0)
+        return handle_language_cycle(svc, id, false);
     if (strcmp(method, TYPIO_IPC_METHOD_ENGINE_INVOKE) == 0)
         return handle_engine_invoke(svc, params, id);
     if (strcmp(method, TYPIO_IPC_METHOD_ENGINE_LOAD) == 0)

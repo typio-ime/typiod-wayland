@@ -37,7 +37,8 @@
 | `description` | No | No | Short description |
 | `author` | No | No | Engine author or vendor |
 | `icon` | No | No | Freedesktop icon name |
-| `language` | No | No | BCP-47 language tag; default `und` |
+| `language` | No | No | BCP-47 language tag; default `und`; superseded by `languages` ([ADR-0031](../adr/0031-language-first-switching-surface.md)) |
+| `languages` | No | No | TOML array of BCP-47 tags, ordered, primary first; `"mul"` declares every language; wins over `language` when both are present |
 | `required` | No | No | Required capability array |
 | `optional` | No | No | Optional capability array |
 

@@ -22,6 +22,7 @@ struct TypioStateController {
     char *active_engine_display_name;
     char *active_voice_engine_name;
     char *active_voice_engine_display_name;
+    char *active_language;
     char *status_icon;
 
     bool engine_active;
@@ -61,6 +62,31 @@ static void typio_state_controller_broadcast(TypioStateController *ctrl,
             l->callback(l->user_data, change_type);
         }
     }
+}
+
+/* Refresh the active-language snapshot from the registry. Returns true when
+ * the language changed. The registry has no dedicated language callback;
+ * every language activation fires the keyboard/voice engine callbacks, so
+ * diffing here catches all transitions — including layout-only languages
+ * where the new slot state is "no engine" (ADR-0031). */
+static bool typio_state_controller_refresh_language(TypioStateController *ctrl) {
+    if (!ctrl || !ctrl->instance) {
+        return false;
+    }
+    TypioRegistry *registry = typio_instance_get_registry(ctrl->instance);
+    char *lang = registry ? typio_registry_get_active_language(registry) : nullptr;
+    bool changed;
+    if (!lang || !ctrl->active_language) {
+        changed = (lang != nullptr) != (ctrl->active_language != nullptr);
+    } else {
+        changed = strcmp(lang, ctrl->active_language) != 0;
+    }
+    if (changed) {
+        free(ctrl->active_language);
+        ctrl->active_language = typio_state_strdup(lang);
+    }
+    typio_free_string(lang);
+    return changed;
 }
 
 static void typio_state_controller_update_engine_active(
@@ -133,6 +159,7 @@ void typio_state_controller_free(TypioStateController *ctrl) {
     free(ctrl->active_engine_display_name);
     free(ctrl->active_voice_engine_name);
     free(ctrl->active_voice_engine_display_name);
+    free(ctrl->active_language);
     free(ctrl->status_icon);
     typio_state_controller_clear_mode(ctrl);
     free(ctrl->listeners);
@@ -204,6 +231,11 @@ const char *typio_state_controller_get_active_voice_engine_name(
 const char *typio_state_controller_get_active_voice_engine_display_name(
     TypioStateController *ctrl) {
     return ctrl ? ctrl->active_voice_engine_display_name : nullptr;
+}
+
+const char *typio_state_controller_get_active_language(
+    TypioStateController *ctrl) {
+    return ctrl ? ctrl->active_language : nullptr;
 }
 
 const char *typio_state_controller_get_status_icon(
@@ -283,6 +315,9 @@ void typio_state_controller_notify_engine_changed(
 
     typio_state_controller_update_engine_active(ctrl);
     typio_state_controller_broadcast(ctrl, TYPIO_STATE_CHANGE_ENGINE);
+    if (typio_state_controller_refresh_language(ctrl)) {
+        typio_state_controller_broadcast(ctrl, TYPIO_STATE_CHANGE_LANGUAGE);
+    }
 }
 
 void typio_state_controller_notify_voice_engine_changed(
@@ -298,6 +333,9 @@ void typio_state_controller_notify_voice_engine_changed(
     ctrl->active_voice_engine_display_name =
         (info && info->display_name) ? strdup(info->display_name) : nullptr;
     typio_state_controller_broadcast(ctrl, TYPIO_STATE_CHANGE_VOICE_ENGINE);
+    if (typio_state_controller_refresh_language(ctrl)) {
+        typio_state_controller_broadcast(ctrl, TYPIO_STATE_CHANGE_LANGUAGE);
+    }
 }
 
 void typio_state_controller_notify_status_changed(
@@ -395,8 +433,11 @@ void typio_state_controller_sync(TypioStateController *ctrl) {
      * clear it and wait for the next mode notification from Core. */
     typio_state_controller_clear_mode(ctrl);
 
+    typio_state_controller_refresh_language(ctrl);
+
     /* Broadcast every change type so listeners perform a full refresh. */
     typio_state_controller_broadcast(ctrl, TYPIO_STATE_CHANGE_ENGINE);
     typio_state_controller_broadcast(ctrl, TYPIO_STATE_CHANGE_VOICE_ENGINE);
+    typio_state_controller_broadcast(ctrl, TYPIO_STATE_CHANGE_LANGUAGE);
     typio_state_controller_broadcast(ctrl, TYPIO_STATE_CHANGE_STATUS_ICON);
 }

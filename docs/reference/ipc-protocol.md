@@ -70,7 +70,7 @@ Notifications have no `id` and expect no reply. The client must have subscribed 
 |---|---|---|
 | C → S | `{}` | `{ protocolVersion, daemonVersion, capabilities: [string...] }` |
 
-`protocolVersion` is an integer (`2` in this release; v2 replaced `engine.use` / `engine.next` with the modality-explicit `keyboard.*` / `voice.*` verbs — ADR-0026). `capabilities` enumerates the top-level namespaces the daemon supports — currently `["config", "engine", "keyboard", "voice", "daemon", "events"]`.
+`protocolVersion` is an integer (`3` in this release; v2 replaced `engine.use` / `engine.next` with the modality-explicit `keyboard.*` / `voice.*` verbs — ADR-0026; v3 added the `language.*` namespace, `daemon.status.activeLanguage`, and the `language.changed` event — ADR-0031). `capabilities` enumerates the top-level namespaces the daemon supports — currently `["config", "engine", "keyboard", "voice", "language", "daemon", "events"]`.
 
 ### `config.*`
 
@@ -108,11 +108,22 @@ The `engine.*` namespace is cross-modality and keyed by engine name (aggregate q
 
 `engine.load` loads a single engine manifest from an absolute `.toml` path. `engine.unload` unregisters an engine by name (deactivating it first if active). `engine.reload` combines unload + load: if `path` is provided, loads from that exact path; if omitted, rescans the configured `engine_dirs` to find the engine by name (`typio-engine-<name>.toml`).
 
+### `language.*`
+
+| Method | params | result |
+|---|---|---|
+| `language.list` | `{}` | `{ languages: [{ tag, active }], active }` |
+| `language.use` | `{ tag }` | `{}` |
+| `language.next` | `{}` | `{ active }` |
+| `language.prev` | `{}` | `{ active }` |
+
+`tag` is a BCP-47 language tag. The list is the enabled cycle: the `languages.enabled` config key when set, otherwise every engine-declared language in registration order. Activating a language retargets the keyboard and voice slots together (libtypio ADR-0018); per-language engine selection is plain config (`config.set languages.<tag>.keyboard <name>`, value `"none"` forces an empty slot). `language.next` / `language.prev` return invalid-params when no languages are enabled or declared.
+
 ### `daemon.*`
 
 | Method | params | result |
 |---|---|---|
-| `daemon.status` | `{}` | `{ version, protocolVersion, uptimeSeconds, activeKeyboardEngine, activeVoiceEngine, runtime? }` |
+| `daemon.status` | `{}` | `{ version, protocolVersion, uptimeSeconds, activeKeyboardEngine, activeVoiceEngine, activeLanguage, runtime? }` |
 | `daemon.version` | `{}` | `{ version }` |
 | `daemon.stop` | `{}` | `{}` |
 
@@ -131,6 +142,7 @@ Subscribes the calling connection to one or more topics. Omitting `topics` (or s
 | Topic | Payload |
 |---|---|
 | `engine.changed` | `{ activeKeyboardEngine, activeVoiceEngine }` |
+| `language.changed` | `{ activeLanguage, activeKeyboardEngine, activeVoiceEngine }` |
 | `engine.statusChanged` | `{ modeId, modeLabel, displayLabel, iconName, profileId, profileLabel }` |
 | `config.changed` | (reserved — emitted on config writes; payload TBD) |
 | `runtime.changed` | (reserved — emitted on runtime-state edges) |
@@ -145,6 +157,7 @@ Subscribes the calling connection to one or more topics. Omitting `topics` (or s
 | `uptimeSeconds` | int |
 | `activeKeyboardEngine` | string (empty if none) |
 | `activeVoiceEngine` | string (empty if none) |
+| `activeLanguage` | string (empty if none) |
 | `runtime.frontendBackend` | string |
 | `runtime.lifecyclePhase` | string |
 | `runtime.virtualKeyboardState` | string |

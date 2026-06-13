@@ -20,7 +20,7 @@ env:
   # The libtypio release this host is developed and released against.
   # Bump deliberately, in its own commit, when adopting new libtypio API,
   # and keep the meson.build version floor in sync.
-  LIBTYPIO_PINNED_REF: v0.3.0
+  LIBTYPIO_PINNED_REF: v0.4.0
 
 jobs:
   build-test:

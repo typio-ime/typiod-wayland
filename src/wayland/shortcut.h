@@ -20,7 +20,8 @@ extern "C" {
 typedef struct TypioConfig TypioConfig;
 
 typedef struct TypioShortcutConfig {
-    TypioShortcutBinding switch_engine;
+    /* Ctrl+Shift chord: cycles the enabled language list (ADR-0031). */
+    TypioShortcutBinding switch_language;
     TypioShortcutBinding emergency_exit;
     TypioShortcutBinding voice_ptt;
 } TypioShortcutConfig;
